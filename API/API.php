@@ -276,8 +276,383 @@ function handle_upload(array $user): array
     return ['path' => 'uploads/' . $filename, 'mime' => $mime, 'uploaded_by' => $user['User_id'] ?? null];
 }
 
+function handle_py_api(array $input): void
+{
+    $do = trim((string)($input['Do'] ?? $input['On'] ?? $input['type'] ?? ''));
+    $db = app_db();
+
+    // Software Version & Update Handler
+    if (in_array(strtolower($do), ['check update', 'check_update', 'update'], true)) {
+        $currentVersion = trim((string)($input['version'] ?? '1.0.0'));
+        $latestVersion = '1.0.1'; // Server latest release version
+
+        if (version_compare($currentVersion, $latestVersion, '<')) {
+            app_json_response([
+                'status' => 'success',
+                'has_update' => true,
+                'latest_version' => $latestVersion,
+                'changelog' => 'Performance optimizations, security fixes, and new features.',
+                'download_url' => 'https://hipermarket0.xo.je/API/updates/update_v' . $latestVersion . '.zip'
+            ]);
+        } else {
+            app_json_response([
+                'status' => 'success',
+                'has_update' => false,
+                'latest_version' => $latestVersion,
+                'message' => 'You are running the latest version (' . $currentVersion . ').'
+            ]);
+        }
+    }
+
+    // 0. Connection Test & User/Shop Validation
+    if (in_array(strtolower($do), ['testing connection', 'test'], true)) {
+        $user = $input['user'] ?? 0;
+        $shop = $input['shop'] ?? 0;
+        $isNewUser = (int)($input['ISNEW_USER'] ?? 0);
+        $isNewShop = (int)($input['ISNEW_SHOP'] ?? 0);
+
+        // Verify User if user dictionary provided and not explicitly registering new user
+        if (is_array($user) && $isNewUser === 0 && !empty($user)) {
+            $userName = trim((string)($user['User_name'] ?? $user['user_name'] ?? ''));
+            $userId = $user['User_id'] ?? $user['id'] ?? null;
+            $userFound = false;
+            if ($userName !== '' || $userId !== null) {
+                try {
+                    $check = $db->prepare('SELECT User_id FROM Users WHERE User_name = ? OR User_id = ? LIMIT 1');
+                    $check->execute([$userName, $userId]);
+                    $userFound = (bool)$check->fetch();
+                } catch (\Throwable $e) {}
+            }
+            if (!$userFound) {
+                app_json_response([
+                    'status' => 'Erorr',
+                    'Erorr' => 'NO USER FOUND',
+                    'message' => 'User was not found on cloud server'
+                ]);
+            }
+        }
+
+        // Verify Shop if shop dictionary provided and not explicitly registering new shop
+        if (is_array($shop) && $isNewShop === 0 && !empty($shop)) {
+            $shopName = trim((string)($shop['Shop_name'] ?? $shop['shop_name'] ?? ''));
+            $shopId = $shop['Shop_Id'] ?? $shop['Shop_id'] ?? $shop['id'] ?? null;
+            $shopFound = false;
+            if ($shopName !== '' || $shopId !== null) {
+                try {
+                    $check = $db->prepare('SELECT Shop_Id FROM Shops WHERE Shop_name = ? OR Shop_Id = ? LIMIT 1');
+                    $check->execute([$shopName, $shopId]);
+                    $shopFound = (bool)$check->fetch();
+                } catch (\Throwable $e) {}
+            }
+            if (!$shopFound) {
+                app_json_response([
+                    'status' => 'Erorr',
+                    'Erorr' => 'NO SHOP FOUND',
+                    'message' => 'Shop was not found on cloud server'
+                ]);
+            }
+        }
+
+        app_json_response([
+            'status' => 'success',
+            'message' => 'Connection OK',
+            'Product_to_upload' => []
+        ]);
+    }
+
+    $getValues = static function (string $key) use ($input): array {
+        $val = $input[$key] ?? [];
+        if (!is_array($val)) {
+            return ($val !== null && $val !== '') ? [$val] : [];
+        }
+        return array_values($val);
+    };
+
+    // 1. General Get query
+    if (strcasecmp($do, 'Get') === 0) {
+        $sql = trim((string)($input['QUERYS'] ?? ''));
+        $values = $getValues('QUERYVALUES');
+        try {
+            if ($sql === '') {
+                app_json_response(['status' => 'success', 'Value' => []]);
+            }
+            $stmt = $db->prepare($sql);
+            $stmt->execute($values);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            app_json_response(['status' => 'success', 'Value' => $rows]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => null]);
+        }
+    }
+
+    // 2. Get User
+    if (strcasecmp($do, 'GET USER') === 0) {
+        $where = trim((string)($input['QUERYS'] ?? ''));
+        $values = $getValues('QUERYVALUES');
+        $sql = 'SELECT * FROM Users';
+        if ($where !== '') {
+            $upper = strtoupper($where);
+            if (str_starts_with($upper, 'SELECT')) {
+                $sql = $where;
+            } elseif (str_starts_with($upper, 'WHERE')) {
+                $sql .= ' ' . $where;
+            } else {
+                $sql .= ' WHERE ' . $where;
+            }
+        }
+        try {
+            $stmt = $db->prepare($sql);
+            $stmt->execute($values);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as &$r) {
+                unset($r['User_password']);
+            }
+            unset($r);
+            app_json_response(['status' => 'success', 'Value' => $rows]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => []]);
+        }
+    }
+
+    // 3. Get Shop
+    if (strcasecmp($do, 'GET SHOP') === 0) {
+        $where = trim((string)($input['QUERYS'] ?? ''));
+        $values = $getValues('QUERYVALUES');
+        $sql = 'SELECT * FROM Shops';
+        if ($where !== '') {
+            $upper = strtoupper($where);
+            if (str_starts_with($upper, 'SELECT')) {
+                $sql = $where;
+            } elseif (str_starts_with($upper, 'WHERE')) {
+                $sql .= ' ' . $where;
+            } else {
+                $sql .= ' WHERE ' . $where;
+            }
+        }
+        try {
+            $stmt = $db->prepare($sql);
+            $stmt->execute($values);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            app_json_response(['status' => 'success', 'Value' => $rows]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => []]);
+        }
+    }
+
+    // 4. Set User (Insert)
+    if (strcasecmp($do, 'SET USER') === 0) {
+        $queryClause = trim((string)($input['QUERYS'] ?? ''));
+        $values = $getValues('QUERYVALUES');
+        try {
+            $sql = 'INSERT INTO Users ' . $queryClause;
+            $stmt = $db->prepare($sql);
+            $stmt->execute($values);
+            $newId = (int)$db->lastInsertId();
+            $row = [];
+            if ($newId > 0) {
+                $fetch = $db->prepare('SELECT * FROM Users WHERE User_id = ? OR rowid = ? LIMIT 1');
+                $fetch->execute([$newId, $newId]);
+                $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
+            }
+            unset($row['User_password']);
+            app_json_response(['status' => 'success', 'Value' => $row]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => null]);
+        }
+    }
+
+    // 5. Update User
+    if (strcasecmp($do, 'UPDATE USER') === 0) {
+        $setClause = trim((string)($input['QUERYS'] ?? ''));
+        $whereClause = trim((string)($input['FIND_ARG'] ?? ''));
+        $setValues = $getValues('QUERYVALUES');
+        $whereValues = $getValues('FIND_VALUE');
+        try {
+            $sql = 'UPDATE Users SET ' . $setClause . ($whereClause !== '' ? ' WHERE ' . $whereClause : '');
+            $stmt = $db->prepare($sql);
+            $stmt->execute(array_merge($setValues, $whereValues));
+
+            $fetchSql = 'SELECT * FROM Users' . ($whereClause !== '' ? ' WHERE ' . $whereClause : '');
+            $fetch = $db->prepare($fetchSql);
+            $fetch->execute($whereValues);
+            $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
+            unset($row['User_password']);
+            app_json_response(['status' => 'success', 'Value' => $row]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => null]);
+        }
+    }
+
+    // 6. Set Shop (Insert)
+    if (strcasecmp($do, 'SET SHOP') === 0) {
+        $queryClause = trim((string)($input['QUERYS'] ?? ''));
+        $values = $getValues('QUERYVALUES');
+        try {
+            $sql = 'INSERT INTO Shops ' . $queryClause;
+            $stmt = $db->prepare($sql);
+            $stmt->execute($values);
+            $newId = (int)$db->lastInsertId();
+            $row = [];
+            if ($newId > 0) {
+                $fetch = $db->prepare('SELECT * FROM Shops WHERE Shop_Id = ? OR rowid = ? LIMIT 1');
+                $fetch->execute([$newId, $newId]);
+                $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
+            }
+            app_json_response(['status' => 'success', 'Value' => $row]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => null]);
+        }
+    }
+
+    // 7. Update Shop
+    if (strcasecmp($do, 'UPDATE SHOP') === 0) {
+        $setClause = trim((string)($input['QUERYS'] ?? ''));
+        $whereClause = trim((string)($input['FIND_ARG'] ?? ''));
+        $setValues = $getValues('QUERYVALUES');
+        $whereValues = $getValues('FIND_VALUE');
+        try {
+            $sql = 'UPDATE Shops SET ' . $setClause . ($whereClause !== '' ? ' WHERE ' . $whereClause : '');
+            $stmt = $db->prepare($sql);
+            $stmt->execute(array_merge($setValues, $whereValues));
+
+            $fetchSql = 'SELECT * FROM Shops' . ($whereClause !== '' ? ' WHERE ' . $whereClause : '');
+            $fetch = $db->prepare($fetchSql);
+            $fetch->execute($whereValues);
+            $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
+            app_json_response(['status' => 'success', 'Value' => $row]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => null]);
+        }
+    }
+
+    // 8. Set Product (Insert)
+    if (strcasecmp($do, 'SET PRODUCT') === 0) {
+        $queryClause = trim((string)($input['QUERYS'] ?? ''));
+        $values = $getValues('QUERYVALUES');
+        try {
+            $sql = 'INSERT INTO product ' . $queryClause;
+            $stmt = $db->prepare($sql);
+            $stmt->execute($values);
+            $newId = (int)$db->lastInsertId();
+            $row = [];
+            if ($newId > 0) {
+                $fetch = $db->prepare('SELECT * FROM product WHERE id = ? OR rowid = ? LIMIT 1');
+                $fetch->execute([$newId, $newId]);
+                $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
+            }
+            app_json_response(['status' => 'success', 'Value' => $row]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => null]);
+        }
+    }
+
+    // 9. Update Product
+    if (strcasecmp($do, 'UPDATE PRODUCT') === 0) {
+        $setClause = trim((string)($input['QUERYS'] ?? ''));
+        $whereClause = trim((string)($input['FIND_ARG'] ?? ''));
+        $setValues = $getValues('QUERYVALUES');
+        $whereValues = $getValues('FIND_VALUE');
+        try {
+            $sql = 'UPDATE product SET ' . $setClause . ($whereClause !== '' ? ' WHERE ' . $whereClause : '');
+            $stmt = $db->prepare($sql);
+            $stmt->execute(array_merge($setValues, $whereValues));
+
+            $fetchSql = 'SELECT * FROM product' . ($whereClause !== '' ? ' WHERE ' . $whereClause : '');
+            $fetch = $db->prepare($fetchSql);
+            $fetch->execute($whereValues);
+            $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
+            app_json_response(['status' => 'success', 'Value' => $row]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => null]);
+        }
+    }
+
+    // 10. Set Document (Insert)
+    if (strcasecmp($do, 'SET DOCUMENT') === 0) {
+        $queryClause = trim((string)($input['QUERYS'] ?? ''));
+        $values = $getValues('QUERYVALUES');
+        try {
+            $sql = 'INSERT INTO doc_table ' . $queryClause;
+            $stmt = $db->prepare($sql);
+            $stmt->execute($values);
+            $newId = (int)$db->lastInsertId();
+            $row = [];
+            if ($newId > 0) {
+                $fetch = $db->prepare('SELECT * FROM doc_table WHERE id = ? OR rowid = ? LIMIT 1');
+                $fetch->execute([$newId, $newId]);
+                $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
+            }
+            app_json_response(['status' => 'success', 'Value' => $row]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => null]);
+        }
+    }
+
+    // 11. Update Document
+    if (strcasecmp($do, 'UPDATE DOCUMENT') === 0) {
+        $setClause = trim((string)($input['QUERYS'] ?? ''));
+        $whereClause = trim((string)($input['FIND_ARG'] ?? ''));
+        $setValues = $getValues('QUERYVALUES');
+        $whereValues = $getValues('FIND_VALUE');
+        try {
+            $sql = 'UPDATE doc_table SET ' . $setClause . ($whereClause !== '' ? ' WHERE ' . $whereClause : '');
+            $stmt = $db->prepare($sql);
+            $stmt->execute(array_merge($setValues, $whereValues));
+
+            $fetchSql = 'SELECT * FROM doc_table' . ($whereClause !== '' ? ' WHERE ' . $whereClause : '');
+            $fetch = $db->prepare($fetchSql);
+            $fetch->execute($whereValues);
+            $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
+            app_json_response(['status' => 'success', 'Value' => $row]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => null]);
+        }
+    }
+
+    // 12. Upload operations
+    if (strcasecmp($do, 'Upload') === 0) {
+        if (!empty($input['isuploadproduct']) || isset($input['Product'])) {
+            $prod = $input['Product'] ?? [];
+            if (is_array($prod) && !empty($prod)) {
+                $saved = save_record('product', $prod, isset($prod['id']) ? (int)$prod['id'] : null);
+                app_json_response(['status' => 'success', 'message' => 'Product uploaded successfully', 'row' => $saved]);
+            }
+        }
+
+        if (!empty($input['isuploadActivetis']) || isset($input['doc'])) {
+            $doc = $input['doc'] ?? [];
+            if (is_array($doc) && !empty($doc)) {
+                $docId = isset($doc['id']) ? (int)$doc['id'] : null;
+                $saved = save_record('doc_table', $doc, $docId);
+                app_json_response(['status' => 'success', 'message' => 'Activity uploaded successfully', 'row' => $saved]);
+            }
+        }
+    }
+
+    // 13. Update Image
+    if (strcasecmp($do, 'Update_Image') === 0) {
+        $base64Img = (string)($input['image'] ?? '');
+        if ($base64Img !== '') {
+            $imgData = base64_decode($base64Img);
+            if ($imgData !== false) {
+                $uploadDir = app_config()['upload_dir'];
+                if (!is_dir($uploadDir)) {
+                    @mkdir($uploadDir, 0750, true);
+                }
+                $filename = 'img_' . bin2hex(random_bytes(10)) . '.png';
+                file_put_contents($uploadDir . '/' . $filename, $imgData);
+                app_json_response(['status' => 'success', 'message' => 'Image saved', 'row' => 'uploads/' . $filename]);
+            }
+        }
+        app_json_response(['status' => 'Erorr', 'message' => 'Failed to save image']);
+    }
+}
+
 try {
     $input = api_input();
+    if (isset($input['Do']) || isset($input['On']) || (isset($input['type']) && $input['type'] === 'Update_Image')) {
+        handle_py_api($input);
+    }
     $action = (string)($_GET['action'] ?? $input['action'] ?? '');
     if ($action === 'health') {
         try { app_db()->query('SELECT 1'); } catch (\Throwable $e) {}
@@ -290,25 +665,32 @@ try {
     }
 
     if ($action === 'login') {
-        $username = trim((string)($input['username'] ?? 'admin'));
-        $user = [
-            'User_id' => 1,
-            'User_name' => $username ?: 'admin',
-            'User_fname' => 'System',
-            'User_Lname' => 'Admin',
-            'User_type' => 'Admin',
-            'User_email' => ($username ?: 'admin') . '@hipermarket.com',
-            'User_country' => 'Ethiopia'
-        ];
+        $username = trim((string)($input['username'] ?? ''));
+        $password = trim((string)($input['password'] ?? ''));
+
+        if ($username === '') {
+            app_json_response(['ok' => false, 'error' => 'Username or email is required.'], 400);
+        }
+
+        $user = null;
         try {
             $users = fetch_all(
-                'SELECT * FROM Users WHERE User_name = ? OR User_email = ? LIMIT 1',
+                'SELECT * FROM Users WHERE (User_name = ? OR User_email = ?) LIMIT 1',
                 [$username, $username],
             );
             if ($users && isset($users[0])) {
-                $user = safe_user($users[0]);
+                $candidate = $users[0];
+                $dbPass = (string)($candidate['User_password'] ?? '');
+                if ($dbPass !== '' && $password !== '' && $dbPass !== $password) {
+                    app_json_response(['ok' => false, 'error' => 'Incorrect password. Please try again.'], 401);
+                }
+                $user = safe_user($candidate);
             }
         } catch (\Throwable $e) {}
+
+        if (!$user) {
+            app_json_response(['ok' => false, 'error' => 'No user account matching "' . $username . '" was found in the connected database.'], 404);
+        }
 
         $token = bin2hex(random_bytes(32));
         $expires = gmdate('Y-m-d H:i:s', time() + 12 * 60 * 60);
@@ -331,6 +713,53 @@ try {
     }
 
     $user = api_user();
+    if ($action === 'get_db_config') {
+        $cfg = app_config();
+        unset($cfg['db_password']);
+        app_json_response(['ok' => true, 'config' => $cfg]);
+    }
+    if ($action === 'reset_db_config' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $configFile = __DIR__ . '/db_config.json';
+        $defaultConfig = [
+            'db_type' => 'mysql',
+            'db_host' => 'sql104.infinityfree.com',
+            'db_port' => '3306',
+            'db_name' => 'if0_43150087_HiperMarket_db',
+            'db_user' => 'if0_43150087',
+            'db_password' => 'A097200m',
+            'token_secret' => 'default-hipermarket-secret-key-2026'
+        ];
+        file_put_contents($configFile, json_encode($defaultConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        app_json_response(['ok' => true, 'message' => 'Reset to default MySQL configuration.', 'config' => $defaultConfig]);
+    }
+    if ($action === 'save_db_config' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $configFile = __DIR__ . '/db_config.json';
+        $existing = [];
+        if (is_file($configFile)) {
+            $existing = json_decode(file_get_contents($configFile) ?: '{}', true) ?: [];
+        }
+        $newConfig = [
+            'db_type' => trim((string)($input['db_type'] ?? 'sqlite')),
+            'db_path' => trim((string)($input['db_path'] ?? '')),
+            'db_host' => trim((string)($input['db_host'] ?? '127.0.0.1')),
+            'db_port' => trim((string)($input['db_port'] ?? '3306')),
+            'db_name' => trim((string)($input['db_name'] ?? 'hipermarket')),
+            'db_user' => trim((string)($input['db_user'] ?? 'root')),
+            'db_password' => isset($input['db_password']) && $input['db_password'] !== ''
+                ? (string)$input['db_password']
+                : ($existing['db_password'] ?? ''),
+            'token_secret' => trim((string)($input['token_secret'] ?? 'default-hipermarket-secret-key-2026'))
+        ];
+
+        file_put_contents($configFile, json_encode($newConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        try {
+            app_db()->query('SELECT 1');
+            app_json_response(['ok' => true, 'message' => 'Database settings saved and connection verified.']);
+        } catch (\Throwable $e) {
+            app_json_response(['ok' => false, 'error' => 'Saved settings, but connection test failed: ' . $e->getMessage()], 400);
+        }
+    }
     if ($action === 'me') {
         app_json_response(['ok' => true, 'user' => $user]);
     }
@@ -399,7 +828,8 @@ try {
         }
         if ($resource === 'shops' && empty($rows)) {
             $rows = [
-                ['Shop_Id' => 1, 'Shop_name' => 'Main Shop', 'Shop_brand_name' => 'BELLEMA FASHION', 'Shop_location' => 'Bole, Addis Ababa', 'Shop_country' => 'Ethiopia']
+                ['Shop_Id' => 1, 'Shop_name' => 'Main Shop', 'Shop_brand_name' => 'BELLEMA FASHION', 'Shop_location' => 'Bole, Addis Ababa', 'Shop_country' => 'Ethiopia'],
+                ['Shop_Id' => 2, 'Shop_name' => 'Flag Squer', 'Shop_brand_name' => 'A.Dot', 'Shop_location' => 'Addis Ababa', 'Shop_country' => 'Ethiopia']
             ];
         }
         if ($resource === 'users') {

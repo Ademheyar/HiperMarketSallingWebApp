@@ -5,7 +5,7 @@ window.HiperApp = (() => {
   "use strict";
 
   const { state, $, $$, api, showToast, setMessage } = window.HiperApi;
-  const { isManager, showLogin, signOut, updateAccountUi, restoreSession, login, quickPass, checkAccess } = window.HiperAuth;
+  const { isManager, showLogin, signOut, updateAccountUi, restoreSession, login, checkAccess } = window.HiperAuth;
 
   async function loadWorkspace() {
     updateAccountUi();
@@ -53,8 +53,8 @@ window.HiperApp = (() => {
   }
 
   function navigate(viewName) {
-    if (!state.user) {
-      if (window.HiperAuth) window.HiperAuth.quickPass();
+    if (window.HiperAuth && !window.HiperAuth.checkAccess(viewName)) {
+      return;
     }
 
     const targetView = $(`#view-${viewName}`);
@@ -170,7 +170,11 @@ window.HiperApp = (() => {
     $$("[data-close-dialog]").forEach((button) => button.addEventListener("click", () => button.closest("dialog")?.close()));
 
     $("#login-form")?.addEventListener("submit", login);
-    $("#quick-pass-btn")?.addEventListener("click", quickPass);
+    $("#open-register-btn")?.addEventListener("click", () => window.HiperAuth && window.HiperAuth.showRegister());
+    $("#open-forgot-btn")?.addEventListener("click", () => window.HiperAuth && window.HiperAuth.showForgotPassword());
+    $("#register-form")?.addEventListener("submit", (e) => window.HiperAuth && window.HiperAuth.registerUser(e));
+    $("#btn-find-account")?.addEventListener("click", () => window.HiperAuth && window.HiperAuth.findUserForReset());
+    $("#forgot-password-form")?.addEventListener("submit", (e) => window.HiperAuth && window.HiperAuth.resetPassword(e));
     $("#record-form")?.addEventListener("submit", saveRecord);
 
     $("#pos-search")?.addEventListener("input", (event) => window.HiperPos && window.HiperPos.renderProductSearch(event.target.value));
@@ -178,6 +182,11 @@ window.HiperApp = (() => {
     $("#clear-cart")?.addEventListener("click", () => { state.cart = []; window.HiperPos && window.HiperPos.renderCart(); });
 
     $("#open-login-btn")?.addEventListener("click", showLogin);
+    $("#topbar-shop-name")?.addEventListener("click", () => window.HiperAuth && window.HiperAuth.showShopSelector());
+    $("#btn-open-create-shop")?.addEventListener("click", () => {
+      $("#select-shop-dialog")?.close();
+      openRecordDialog("shops");
+    });
     $("#profile-signout-btn")?.addEventListener("click", () => signOut());
 
     $("#retry-health")?.addEventListener("click", () => window.HiperApi.checkHealth());
@@ -187,6 +196,7 @@ window.HiperApp = (() => {
     $("#menu-toggle")?.addEventListener("click", () => $("#sidebar")?.classList.toggle("open"));
     $("#print-receipt")?.addEventListener("click", () => window.print());
 
+    if (window.HiperPos) window.HiperPos.bindPosShopEvents();
     if (window.HiperUserProfile) window.HiperUserProfile.bindProfileEvents();
     if (window.HiperDocuments) window.HiperDocuments.bindDocEvents();
     if (window.HiperShopSettings) window.HiperShopSettings.bindShopSettingsEvents();

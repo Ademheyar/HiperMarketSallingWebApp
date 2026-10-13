@@ -1,0 +1,9 @@
+{
+  "db_type": "mysql",
+  "db_host": "sql104.infinityfree.com",
+  "db_port": "3306",
+  "db_name": "if0_43150087_HiperMarket_db",
+  "db_user": "if0_43150087",
+  "db_password": "A097200m",
+  "token_secret": "default-hipermarket-secret-key-2026"
+}

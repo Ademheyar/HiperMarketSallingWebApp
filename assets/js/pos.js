@@ -9,20 +9,39 @@ window.HiperPos = (() => {
   function renderShopOptions() {
     const select = $("#sale-shop");
     if (!select) return;
-    const current = select.value;
-    select.replaceChildren();
-    const placeholder = document.createElement("option");
-    placeholder.value = "Main Shop";
-    placeholder.textContent = "Main Shop";
-    select.append(placeholder);
 
-    for (const shop of state.shops || []) {
+    const workShops = window.HiperAuth ? window.HiperAuth.getUserWorkShops() : (state.shops || []);
+    const activeName = state.activeShop?.Shop_name || state.activeShop?.name || select.value || "Main Shop";
+
+    select.replaceChildren();
+
+    for (const shop of workShops) {
       const option = document.createElement("option");
-      option.value = shop.Shop_name || shop.Shop_brand_name || "Main Shop";
-      option.textContent = shop.Shop_name || shop.Shop_brand_name || "Main Shop";
+      const name = shop.Shop_name || shop.name || shop.Shop_brand_name || "Main Shop";
+      option.value = name;
+      option.textContent = shop.Shop_brand_name ? `${name} (${shop.Shop_brand_name})` : name;
       select.append(option);
     }
-    select.value = current || "Main Shop";
+
+    if (workShops.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "Main Shop";
+      opt.textContent = "Main Shop";
+      select.append(opt);
+    }
+
+    select.value = activeName;
+  }
+
+  function bindPosShopEvents() {
+    $("#sale-shop")?.addEventListener("change", (e) => {
+      const selectedName = e.target.value;
+      const workShops = window.HiperAuth ? window.HiperAuth.getUserWorkShops() : [];
+      const found = workShops.find(s => (s.Shop_name || s.name || s.Shop_brand_name) === selectedName);
+      if (found && window.HiperAuth) {
+        window.HiperAuth.selectActiveShop(found);
+      }
+    });
   }
 
   function renderProductSearch(searchTerm = "") {
@@ -219,6 +238,7 @@ window.HiperPos = (() => {
 
   return {
     renderShopOptions,
+    bindPosShopEvents,
     renderProductSearch,
     renderCart,
     completeSale,

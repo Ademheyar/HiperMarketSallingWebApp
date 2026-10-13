@@ -4,8 +4,6 @@
 window.HiperApi = (() => {
   "use strict";
 
-  const API_ENDPOINT = "API/API.php";
-
   const state = {
     token: sessionStorage.getItem("hiper-token") || "",
     user: null,
@@ -14,6 +12,14 @@ window.HiperApi = (() => {
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+  function getApiEndpoint() {
+    const custom = localStorage.getItem("hiper-api-link") || "";
+    if (custom && custom.trim() !== "") {
+      return custom.trim();
+    }
+    return new URL("API/API.php", window.location.href).href;
+  }
 
   function showToast(message, isError = false) {
     const toast = $("#toast");
@@ -32,7 +38,12 @@ window.HiperApi = (() => {
   }
 
   async function api(action, options = {}) {
-    const url = new URL(API_ENDPOINT, window.location.href);
+    let url;
+    try {
+      url = new URL(getApiEndpoint(), window.location.href);
+    } catch {
+      url = new URL("API/API.php", window.location.href);
+    }
     url.searchParams.set("action", action);
     if (options.query) {
       for (const [key, value] of Object.entries(options.query)) {
@@ -103,6 +114,7 @@ window.HiperApi = (() => {
     $,
     $$,
     api,
+    getApiEndpoint,
     showToast,
     setMessage,
     checkHealth

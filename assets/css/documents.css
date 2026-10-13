@@ -1,6 +1,68 @@
 /**
- * documents.css - Manage Documents Module Styling (100% Matching DocumentsScreen.kt & Doc.py)
+ * documents.css - Manage Documents Module Styling (100% Matching DocumentsScreen.kt, Doc.py, Chart.py & docediterform.py)
  */
+
+/* TOP NOTEBOOK TABS BAR (Documents tab + Selected Open Doc tabs) */
+.top-doc-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  background: #08111e;
+  padding: 6px 6px 0 6px;
+  border-bottom: 2px solid #1565c0;
+  margin-bottom: 12px;
+}
+
+.top-doc-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: #0f233f;
+  color: #8a9ba8;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.top-doc-tab:hover {
+  background: #1565c0;
+  color: #ffffff;
+}
+
+.top-doc-tab.active {
+  background: #1976d2;
+  color: #ffffff;
+  border-color: #1565c0;
+  box-shadow: 0 -2px 8px rgba(25, 118, 210, 0.4);
+}
+
+.top-tab-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+.top-tab-close-btn:hover {
+  background: #c62828;
+  color: #ffffff;
+}
+
 .doc-header-tag {
   display: inline-block;
   background: var(--success);
@@ -58,9 +120,10 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text);
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .doc-action-bar {
@@ -171,21 +234,120 @@
   margin-bottom: 10px;
 }
 
+/* CHART CONTROLS & STYLING (Chart.py) */
+.chart-controls-bar select.compact-select {
+  padding: 4px 8px;
+  font-size: 11px;
+  min-height: 28px;
+  background: #08111e;
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 4px;
+}
+
+.chart-listbox-item {
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: space-between;
+  color: #e0e0e0;
+}
+
+.chart-listbox-item:hover {
+  background: rgba(25, 118, 210, 0.2);
+}
+
+/* FINANCIAL METRICS GRID (Doc.py home_tab: 4 Columns x 5 Rows Layout) */
 .report-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
   margin-top: 12px;
 }
 
-.report-card {
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #08111e;
-  display: grid;
-  gap: 6px;
+@media (max-width: 900px) {
+  .report-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.report-card span { color: var(--muted); font-size: 11px; }
-.report-card strong { font-size: 20px; color: var(--success); }
+.report-card.action-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+}
+
+.report-card {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #08111e;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.report-card span {
+  color: #8a9ba8;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.report-card strong {
+  font-size: 18px;
+  color: #4dd0e1;
+}
+
+.report-card.highlight {
+  background: #0d47a1;
+  border-color: #1976d2;
+}
+
+.report-card.highlight strong {
+  color: #ffffff;
+  font-size: 22px;
+}
+
+/* DOCUMENT EDITOR TAB STYLING (docediterform.py) */
+.doc-editor-instance {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editor-sub-tabs {
+  display: flex;
+  gap: 4px;
+  background: #08111e;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.editor-sub-tab {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.editor-sub-tab.active {
+  background: #1565c0;
+  color: #ffffff;
+}
+
+.payment-tools-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: #0b1726;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}

@@ -3,6 +3,14 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/API/config.php';
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['action'])) {
+    $contentType = strtolower($_SERVER['CONTENT_TYPE'] ?? '');
+    if (str_contains($contentType, 'application/json') || isset($_GET['action'])) {
+        require_once __DIR__ . '/API/API.php';
+        exit;
+    }
+}
+
 // Initial Server & SQL Database Health Check
 $dbConnected = false;
 $dbError = '';
@@ -82,10 +90,8 @@ try {
         <button class="icon-button mobile-menu" id="menu-toggle" aria-label="Open navigation">☰</button>
         <div><p class="eyebrow" id="page-kicker">HIPER MARKET</p><h1 id="page-title">Home / Feed</h1></div>
         <div class="topbar-right">
-          <div class="topbar-shop-badge">🏬 <span id="topbar-shop-name">Main Shop</span></div>
           <span class="user-name" id="user-name">Not signed in</span>
           <button class="button button-primary button-small" id="open-login-btn">🛡️ Security Log In</button>
-          <button class="button button-quiet hidden" id="logout-button">Sign Out</button>
         </div>
       </header>
 
@@ -200,9 +206,10 @@ try {
           <hr class="divider">
 
           <div class="profile-sub-tabs">
-            <button class="profile-tab active" id="ptab-messages">💬 Messages</button>
+            <button class="profile-tab" id="ptab-messages">💬 Messages</button>
             <button class="profile-tab" id="ptab-notif">🔔 Notifications</button>
             <button class="profile-tab" id="ptab-history">🛒 Sales History</button>
+            <button class="profile-tab active" id="ptab-business">💼 Bissnes</button>
           </div>
 
           <div class="profile-tab-content" id="prof-tab-content">
@@ -253,12 +260,18 @@ try {
             </nav>
           </aside>
 
-          <!-- MANAGER SUB-FRAMES CONTENT -->
-          <div class="manager-frame-container">
-            <!-- Sub-Frame 1: Documents (100% Matching DocumentsScreen.kt & Doc.py) -->
-            <div class="mgr-subframe" id="mgr-subframe-sales">
-              <span class="doc-header-tag">Documents</span>
+          <!-- Sub-Frame 1: Documents (100% Matching DocumentsScreen.kt, Doc.py, Chart.py & docediterform.py) -->
+          <div class="mgr-subframe" id="mgr-subframe-sales">
+            <!-- Top Document Tabs Row (Doc.py notebook tabs: Documents tab + Selected Open Doc tabs) -->
+            <div class="top-doc-tabs-bar" id="top-doc-tabs-bar">
+              <button class="top-doc-tab active" id="main-doc-tab-btn" data-doc-tab="main-docs">
+                <span>📄 Documents</span>
+              </button>
+              <div id="dynamic-doc-tabs" style="display: flex; gap: 4px;"></div>
+            </div>
 
+            <!-- MAIN DOCUMENTS VIEW CONTAINER -->
+            <div id="main-docs-container">
               <!-- Filter Form Grid (Doc.py / DocumentsScreen.kt) -->
               <article class="doc-filter-panel">
                 <!-- Row 1 Filters -->
@@ -274,7 +287,7 @@ try {
 
                 <!-- Row 2 Filters -->
                 <div class="doc-filter-row">
-                  <label class="doc-filter-field"><span>User ID:</span><select id="filter-user-id"><option value="">All Users</option></select></label>
+                  <label class="doc-filter-field"><span>User ID:</span><select id="filter-user-id"><option value=""></option></select></label>
                   <label class="doc-filter-field"><span>At Shop:</span><select id="filter-at-shop"><option value="">Main Shop</option><option value="All Shops">All Shops</option></select></label>
                   <label class="doc-filter-field"><span>Customer ID:</span><select id="filter-customer-id"><option value=""></option></select></label>
                   <label class="doc-filter-field"><span>Seller ID:</span><select id="filter-seller-id"><option value=""></option></select></label>
@@ -337,16 +350,84 @@ try {
                 </div>
               </div>
 
-              <!-- Sub-Tab 2: Document Report & Sales History (Doc.py / Chart.py) -->
+              <!-- Sub-Tab 2: Document Report & Sales Analytics Chart (Doc.py / Chart.py) -->
               <div class="panel hidden" id="doc-report-view">
                 <div class="report-container">
-                  <h3>📊 Sales &amp; Financial Summary Report (Doc.py)</h3>
-                  <div class="report-metrics-grid">
-                    <div class="report-card"><span>Total Gross Revenue</span><strong id="rep-gross">$0.00</strong></div>
-                    <div class="report-card"><span>Total Documents</span><strong id="rep-count">0</strong></div>
-                    <div class="report-card"><span>Estimated Net Profit</span><strong id="rep-profit">$0.00</strong></div>
+                  <div class="section-toolbar">
+                    <h3>📊 Sales &amp; Financial Summary Report</h3>
+                    <select class="input" id="report-type-select" style="max-width: 280px;">
+                      <option value="date">Show Report By Date And Time</option>
+                      <option value="user">Show Report By User</option>
+                      <option value="shop">Show Report By Shop</option>
+                    </select>
+                  </div>
+
+                  <!-- Interactive Analytics Chart Panel with Full Controls (Chart.py) -->
+                  <div class="panel margin-top-sm" style="background: #0b1726; padding: 16px; border: 1px solid var(--line);">
+                    <!-- Chart Toolbar Controls (Chart.py: Connectby Line, Show Line, Show List, Style, Which Date, Label Position) -->
+                    <div class="chart-controls-bar" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line);">
+                      <label class="doc-checkbox-group"><input type="checkbox" id="chart-chk-connect" checked> <span>Connect By Line</span></label>
+                      <label class="doc-checkbox-group"><input type="checkbox" id="chart-chk-showline" checked> <span>Show Line</span></label>
+                      <label class="doc-checkbox-group"><input type="checkbox" id="chart-chk-showlist"> <span>Show List</span></label>
+                      <select class="input compact-select" id="chart-style-select">
+                        <option value="Bar Chart" selected>Bar Chart</option>
+                        <option value="Scatter Plot Chart">Scatter Plot Chart</option>
+                        <option value="Pie Chart">Pie Chart</option>
+                        <option value="Line Chart">Line Chart</option>
+                      </select>
+                      <select class="input compact-select" id="chart-time-select">
+                        <option value="By 30 Min">By 30 Min</option>
+                        <option value="By hour">By hour</option>
+                        <option value="By daily" selected>By daily</option>
+                        <option value="By weekly">By weekly</option>
+                        <option value="By monthly">By monthly</option>
+                        <option value="By year">By year</option>
+                      </select>
+                      <select class="input compact-select" id="chart-label-select">
+                        <option value="Bottom" selected>Bottom</option>
+                        <option value="Top Of The Ege">Top Of The Edge</option>
+                        <option value="In Middle">In Middle</option>
+                        <option value="Oposite">Opposite</option>
+                      </select>
+                    </div>
+
+                    <!-- Chart Display Grid (Canvas + Optional Data Listbox) -->
+                    <div class="chart-flex-wrapper" style="display: flex; gap: 16px;">
+                      <div id="doc-chart-container" style="flex: 1; height: 260px; overflow: hidden; position: relative;"></div>
+                      <div id="doc-chart-listbox" class="chart-listbox hidden" style="width: 220px; max-height: 260px; overflow-y: auto; background: #08111e; border: 1px solid var(--line); padding: 8px; font-size: 11px;"></div>
+                    </div>
+                  </div>
+
+                  <!-- Financial Metrics Grid (100% Matching Doc.py home_tab Row/Column layout) -->
+                  <div class="report-metrics-grid margin-top-md">
+                    <!-- Row 0: Cash Paid | Cash Outs | Cash Stock | Total Profit -->
                     <div class="report-card"><span>Cash Paid</span><strong id="rep-cash">$0.00</strong></div>
+                    <div class="report-card"><span>Cash Outs</span><strong id="rep-cash-outs">$0.00</strong></div>
+                    <div class="report-card"><span>Cash Stock</span><strong id="rep-cash-stock">$0.00</strong></div>
+                    <div class="report-card"><span>Total Profit</span><strong id="rep-profit">$0.00</strong></div>
+
+                    <!-- Row 1: Card Paid | Card Outs | Card Stock | Profit After Outs -->
                     <div class="report-card"><span>Card Paid</span><strong id="rep-card">$0.00</strong></div>
+                    <div class="report-card"><span>Card Outs</span><strong id="rep-card-outs">$0.00</strong></div>
+                    <div class="report-card"><span>Card Stock</span><strong id="rep-card-stock">$0.00</strong></div>
+                    <div class="report-card"><span>Profit After Outs</span><strong id="rep-profit-after-outs">$0.00</strong></div>
+
+                    <!-- Row 2: Card In | Expenses | Credit Stock | Paid After Outs -->
+                    <div class="report-card"><span>Card In</span><strong id="rep-card-in">$0.00</strong></div>
+                    <div class="report-card"><span>Expenses</span><strong id="rep-expenses">$0.00</strong></div>
+                    <div class="report-card"><span>Credit Stock</span><strong id="rep-credit-stock">$0.00</strong></div>
+                    <div class="report-card"><span>Paid After Outs</span><strong id="rep-paid-after-outs">$0.00</strong></div>
+
+                    <!-- Row 3: Total Paid | Total Out | Total Stock | End Day -->
+                    <div class="report-card highlight"><span>Total Paid</span><strong id="rep-paid">$0.00</strong></div>
+                    <div class="report-card"><span>Total Out</span><strong id="rep-total-out">$0.00</strong></div>
+                    <div class="report-card"><span>Total Stock</span><strong id="rep-total-stock">$0.00</strong></div>
+                    <div class="report-card action-card"><button class="button button-primary full-width" id="btn-end-day">⚡ Perform End Day</button></div>
+
+                    <!-- Row 4: Amount Unpaid | Net Total | GRAND TOTAL -->
+                    <div class="report-card"><span>Amount Unpaid</span><strong id="rep-unpaid">$0.00</strong></div>
+                    <div class="report-card"><span>Net Total</span><strong id="rep-total">$0.00</strong></div>
+                    <div class="report-card highlight" style="grid-column: span 2;"><span>GRAND TOTAL</span><strong id="rep-gtotal">$0.00</strong></div>
                   </div>
 
                   <div class="section-toolbar margin-top-md">
@@ -356,6 +437,25 @@ try {
                     <table>
                       <thead><tr><th>Date</th><th>Transactions</th><th>Gross Sales</th></tr></thead>
                       <tbody id="reports-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CONTAINER FOR OPEN DOCUMENT EDITORS (docediterform.py) -->
+            <div id="open-doc-editors-container"></div>
+          </div>
+
+                <div class="table-scroll margin-top-sm">
+                  <table>
+                    <thead>
+                      <tr><th>Item Name</th><th>Quantity</th><th>Price</th><th>Subtotal</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="edit-doc-items-body"></tbody>
+                  </table>
+                </div>
+              </div>
                     </table>
                   </div>
                 </div>
@@ -496,11 +596,121 @@ try {
 
       <!-- 5. APP PREFERENCES VIEW -->
       <section class="view" id="view-settings">
-        <div class="section-toolbar"><div><p class="eyebrow">CONFIGURATION</p><h2>Application Preferences</h2></div><button class="button button-secondary" id="refresh-data">Refresh Data</button></div>
+        <div class="section-toolbar">
+          <div><p class="eyebrow">CONFIGURATION</p><h2>Application Preferences &amp; Settings</h2></div>
+          <button class="button button-secondary" id="refresh-data">Refresh Data</button>
+        </div>
         <div class="settings-grid">
-          <article class="panel"><p class="eyebrow">SQL DATABASE</p><h3>Server Connection Status</h3><div class="connection-detail" id="settings-connection">Checking…</div></article>
-          <article class="panel"><p class="eyebrow">SESSION</p><h3>Signed-in Account</h3><div class="profile-line"><span class="avatar" id="user-avatar">?</span><div><strong id="settings-user">Not signed in</strong><small id="settings-role">—</small></div></div><button class="button button-secondary" id="settings-logout">Sign out</button></article>
-          <article class="panel"><p class="eyebrow">UPLOADS</p><h3>Product or Shop Image Upload</h3><label class="button button-secondary upload-button">Choose Image<input id="image-upload" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label><p class="form-message" id="upload-message" role="status"></p></article>
+          <!-- THEME SELECTION CARD -->
+          <article class="panel">
+            <p class="eyebrow">APPEARANCE</p>
+            <h3>Application Theme</h3>
+            <p class="muted">Select your preferred color theme for the web interface.</p>
+            <label class="field">
+              <span>Theme Mode</span>
+              <select class="input" id="theme-select">
+                <option value="dark">🌙 Dark Theme (Default)</option>
+                <option value="light">☀️ Light Theme</option>
+                <option value="midnight">🌌 Midnight Blue Theme</option>
+              </select>
+            </label>
+          </article>
+
+          <!-- SESSION CARD -->
+          <article class="panel">
+            <p class="eyebrow">SESSION</p>
+            <h3>Signed-in Account</h3>
+            <div class="profile-line">
+              <span class="avatar" id="user-avatar">?</span>
+              <div><strong id="settings-user">Not signed in</strong><small id="settings-role">—</small></div>
+            </div>
+            <button class="button button-secondary margin-top-sm" id="settings-logout">Sign out</button>
+          </article>
+
+          <!-- SQL DATABASE CONFIGURATION CARD -->
+          <article class="panel wide-panel">
+            <p class="eyebrow">DATABASE &amp; SERVER</p>
+            <h3>SQL Database Configuration</h3>
+            <p class="muted">Configure local SQLite database file or remote MySQL/MariaDB database server connection info.</p>
+
+            <form id="db-config-form">
+              <div class="form-grid">
+                <label class="field">
+                  <span>Database Driver Type</span>
+                  <select class="input" id="db-type">
+                    <option value="sqlite">SQLite (Local File DB)</option>
+                    <option value="mysql">MySQL / MariaDB (Database Server)</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Secret Token Key</span>
+                  <input class="input" id="db-secret" placeholder="default-hipermarket-secret-key-2026">
+                </label>
+              </div>
+
+              <div class="margin-top-sm">
+                <label class="field">
+                  <span>Server API Endpoint Link</span>
+                  <input class="input" id="settings-api-link" placeholder="API/API.php">
+                </label>
+              </div>
+
+              <!-- SQLITE DB FIELDS -->
+              <div id="sqlite-fields" class="margin-top-sm hidden">
+                <div class="field">
+                  <span class="field-label">Local SQLite Database File Path</span>
+                  <div style="display: flex; gap: 8px;">
+                    <input class="input" id="db-path" value="data/my_database.db" placeholder="data/my_database.db or C:/path/to/my_database.db">
+                    <button class="button button-secondary" type="button" id="btn-browse-db-path" style="white-space: nowrap;">📁 Browse Path</button>
+                    <input type="file" id="db-file-picker" accept=".db,.sqlite,.sqlite3" style="display: none;">
+                  </div>
+                </div>
+              </div>
+
+              <!-- MYSQL FIELDS -->
+              <div id="mysql-fields" class="form-grid margin-top-sm">
+                <label class="field">
+                  <span>Database Hostname</span>
+                  <input class="input" id="db-host" value="sql104.infinityfree.com" placeholder="sql104.infinityfree.com">
+                </label>
+                <label class="field">
+                  <span>Port</span>
+                  <input class="input" id="db-port" value="3306" placeholder="3306">
+                </label>
+                <label class="field">
+                  <span>Database Name</span>
+                  <input class="input" id="db-name" value="if0_43150087_HiperMarket_db" placeholder="if0_43150087_HiperMarket_db">
+                </label>
+                <label class="field">
+                  <span>Username</span>
+                  <input class="input" id="db-user" value="if0_43150087" placeholder="if0_43150087">
+                </label>
+                <label class="field">
+                  <span>Password</span>
+                  <input class="input" id="db-password" type="password" value="A097200m" placeholder="Enter MySQL Password">
+                </label>
+              </div>
+
+              <p class="form-message" id="db-config-message" role="status"></p>
+
+              <div class="dialog-actions margin-top-md">
+                <button class="button button-quiet" type="button" id="reset-db-btn">🔄 Reset to Default</button>
+                <button class="button button-secondary" type="button" id="test-db-btn">⚡ Test Connection</button>
+                <button class="button button-primary" type="submit">💾 Save DB Settings</button>
+              </div>
+            </form>
+          </article>
+
+          <!-- UPLOADS CARD -->
+          <article class="panel">
+            <p class="eyebrow">UPLOADS</p>
+            <h3>Product or Shop Image Upload</h3>
+            <label class="button button-secondary upload-button">Choose Image
+              <input id="image-upload" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+            </label>
+            <p class="form-message" id="upload-message" role="status"></p>
+          </article>
         </div>
       </section>
       <div class="toast" id="toast" role="status"></div>
@@ -510,18 +720,136 @@ try {
   <!-- SECURITY LOGIN MODAL -->
   <dialog class="dialog" id="login-dialog">
     <form class="dialog-card security-login-card" id="login-form">
-      <div class="dialog-brand security-brand">
-        <span class="brand-mark security-mark">🔒</span>
-        <div><p class="eyebrow security-eyebrow">SECURITY AUTHORIZATION</p><h2>System Security Login</h2></div>
+      <div class="dialog-heading">
+        <div class="dialog-brand security-brand">
+          <span class="brand-mark security-mark">🔒</span>
+          <div><p class="eyebrow security-eyebrow">SECURITY AUTHORIZATION</p><h2>System Security Login</h2></div>
+        </div>
+        <button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button>
       </div>
-      <p class="muted security-info">Enter your system credentials or server API link to unlock POS Terminal &amp; Manager features.</p>
+      <p class="muted security-info">Enter your system credentials to unlock POS Terminal &amp; Manager features.</p>
       <label class="field security-field"><span>Username or Email</span><input class="input security-input" name="username" value="admin" autocomplete="username" required></label>
       <label class="field security-field"><span>Password</span><input class="input security-input" name="password" type="password" value="admin" autocomplete="current-password" required></label>
-      <label class="field security-field"><span>Server API Link</span><input class="input security-input" name="serverLink" id="login-server-link" value="https://api.hipermarket.com/v1"></label>
       <p class="form-message" id="login-message" role="alert"></p>
       <div class="security-actions-group">
         <button class="button button-primary full-width security-submit-btn" type="submit">🔒 Security Sign In</button>
-        <button class="button button-secondary full-width margin-top-sm security-pass-btn" type="button" id="quick-pass-btn">⚡ Quick Pass as Admin</button>
+        <div class="form-grid margin-top-sm">
+          <button class="button button-quiet" type="button" id="open-register-btn">✨ Create New User</button>
+          <button class="button button-quiet" type="button" id="open-forgot-btn">🔑 Forgot Password?</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- SELECT USER WORKPLACE / SHOP MODAL -->
+  <dialog class="dialog" id="select-shop-dialog">
+    <div class="dialog-card">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">WORKPLACE SELECTION</p>
+          <h2>Select Active Shop / Store</h2>
+        </div>
+        <button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button>
+      </div>
+      <p class="muted">Select a workplace from your assigned shops to activate your workspace and POS terminal.</p>
+
+      <div id="user-shops-list" class="simple-list margin-top-sm" style="max-height: 280px; overflow-y: auto;">
+        <p class="empty-state">Loading your workplaces…</p>
+      </div>
+
+      <div class="dialog-actions margin-top-md" style="justify-content: space-between;">
+        <button class="button button-secondary" type="button" id="btn-open-create-shop">🏬 Create New Shop</button>
+        <button class="button button-secondary" type="button" data-close-dialog>Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- CREATE NEW USER / REGISTER MODAL -->
+  <dialog class="dialog" id="register-dialog">
+    <form class="dialog-card security-login-card" id="register-form">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">USER REGISTRATION</p>
+          <h2>Create New Account</h2>
+        </div>
+        <button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button>
+      </div>
+      <p class="muted">Fill in your profile details to create a user account in the connected database.</p>
+
+      <div class="form-grid">
+        <label class="field"><span>First Name</span><input class="input" name="User_fname" placeholder="John" required></label>
+        <label class="field"><span>Last Name</span><input class="input" name="User_Lname" placeholder="Doe" required></label>
+      </div>
+      <div class="form-grid">
+        <label class="field"><span>Username</span><input class="input" name="User_name" placeholder="johndoe" required></label>
+        <label class="field"><span>Email Address</span><input class="input" type="email" name="User_email" placeholder="john@example.com" required></label>
+      </div>
+      <div class="form-grid">
+        <label class="field"><span>Phone Number</span><input class="input" name="User_phone_num" placeholder="+251 900 000 000"></label>
+        <label class="field"><span>Role / Access Type</span>
+          <select class="input" name="User_type">
+            <option value="Customer">Customer</option>
+            <option value="Worker">Worker / Cashier</option>
+            <option value="Manager">Manager</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-grid">
+        <label class="field"><span>Country</span><input class="input" name="User_country" value="Ethiopia"></label>
+        <label class="field"><span>Address / City</span><input class="input" name="User_address" placeholder="Addis Ababa"></label>
+      </div>
+      <div class="form-grid">
+        <label class="field"><span>Password</span><input class="input" type="password" name="User_password" required></label>
+        <label class="field"><span>Confirm Password</span><input class="input" type="password" name="User_password_confirm" required></label>
+      </div>
+
+      <p class="form-message" id="register-message" role="status"></p>
+
+      <div class="dialog-actions margin-top-md">
+        <button class="button button-secondary" type="button" data-close-dialog>Cancel</button>
+        <button class="button button-primary" type="submit">✨ Create User Account</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- FORGOT / RESET PASSWORD MODAL -->
+  <dialog class="dialog" id="forgot-password-dialog">
+    <form class="dialog-card security-login-card" id="forgot-password-form">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">ACCOUNT RECOVERY</p>
+          <h2>Reset Forgotten Password</h2>
+        </div>
+        <button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button>
+      </div>
+      <p class="muted">Enter your Username, Email, or Phone No to find your account in the connected database.</p>
+
+      <label class="field">
+        <span>Username, Email, or Phone No</span>
+        <input class="input" id="forgot-search-input" placeholder="e.g. admin or admin@hipermarket.com" required>
+      </label>
+
+      <div class="margin-top-sm">
+        <button class="button button-secondary full-width" type="button" id="btn-find-account">🔍 Find Account</button>
+      </div>
+
+      <div id="forgot-reset-fields" class="hidden margin-top-md">
+        <div class="panel margin-top-sm" style="background:#0b1726; padding:10px;">
+          <small class="muted">Account Found:</small>
+          <div><strong id="found-user-display">—</strong></div>
+        </div>
+        <div class="form-grid margin-top-sm">
+          <label class="field"><span>New Password</span><input class="input" type="password" id="forgot-new-password"></label>
+          <label class="field"><span>Confirm New Password</span><input class="input" type="password" id="forgot-confirm-password"></label>
+        </div>
+      </div>
+
+      <p class="form-message" id="forgot-message" role="status"></p>
+
+      <div class="dialog-actions margin-top-md">
+        <button class="button button-secondary" type="button" data-close-dialog>Cancel</button>
+        <button class="button button-primary hidden" type="submit" id="btn-reset-password-submit">🔑 Save New Password</button>
       </div>
     </form>
   </dialog>

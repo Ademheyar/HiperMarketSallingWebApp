@@ -1,7 +1,7 @@
 /**
  * base.css - Variables, Resets, Base Typography, Buttons, Tables & Dialogs
  */
-:root {
+:root, [data-theme="dark"] {
   color-scheme: dark;
   --page: #0b1726;
   --sidebar: #0b1726;
@@ -20,6 +20,42 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
+
+[data-theme="light"] {
+  color-scheme: light;
+  --page: #f1f5f9;
+  --sidebar: #ffffff;
+  --panel: #ffffff;
+  --panel-raised: #f8fafc;
+  --line: #cbd5e1;
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #0284c7;
+  --accent-strong: #0369a1;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --warning: #d97706;
+}
+
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --page: #050a14;
+  --sidebar: #0a1120;
+  --panel: #0f192d;
+  --panel-raised: #14223c;
+  --line: #1c2e4f;
+  --text: #e0f2fe;
+  --muted: #7dd3fc;
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --success: #10b981;
+  --danger: #f43f5e;
+  --warning: #fbbf24;
+}
+
+.wide-panel { grid-column: 1 / -1; }
+.margin-top-sm { margin-top: 8px; }
+.margin-top-md { margin-top: 14px; }
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--page); color: var(--text); }
@@ -75,7 +111,7 @@ h4 { margin: 4px 0 8px; font-size: 14px; color: var(--accent); }
 .form-message.success { color: var(--success); }
 
 .table-panel { padding: 0; overflow: hidden; }
-.table-scroll { overflow-x: auto; }
+.table-scroll { overflow-x: auto; overflow-y: auto; max-height: 520px; white-space: nowrap; }
 table { width: 100%; border-collapse: collapse; text-align: left; }
 th, td { padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 12px; vertical-align: middle; }
 th { background: #0b1726; color: var(--accent); font-size: 11px; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
@@ -116,9 +152,8 @@ tbody tr:hover td { background: rgb(255 255 255 / 2%); }
   .main-area { margin-left: 220px; padding-right: 16px; padding-left: 16px; }
 }
 @media (max-width: 640px) {
-  .main-area { margin-left: 0; padding: 0 14px 28px; }
-  .topbar { min-height: 70px; }
-  .mobile-menu { display: inline-grid !important; }
+  .main-area { margin-left: 0; padding: 0 14px 76px; }
+  .topbar { min-height: 64px; }
   .topbar > div:nth-child(2) { margin-right: auto; }
   .topbar h1 { font-size: 18px; }
   .user-name { display: none; }
