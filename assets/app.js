@@ -9,14 +9,23 @@ window.HiperApp = (() => {
 
   async function loadWorkspace() {
     updateAccountUi();
-    await Promise.all([
-      window.HiperHome ? window.HiperHome.loadDashboard() : Promise.resolve(),
-      window.HiperApi.api("list", { query: { resource: "products" } }).then(res => state.products = res.items || []),
-      window.HiperApi.api("list", { query: { resource: "users" } }).then(res => state.users = res.items || []),
-      window.HiperApi.api("list", { query: { resource: "shops" } }).then(res => state.shops = res.items || []),
-      window.HiperApi.api("list", { query: { resource: "sales" } }).then(res => state.sales = res.items || []),
-      window.HiperReports ? window.HiperReports.loadReports() : Promise.resolve()
-    ]);
+
+    // Immediately render Home dashboard so product feed & shop stories show without delay
+    if (window.HiperHome) {
+      window.HiperHome.loadDashboard();
+    }
+
+    try {
+      await Promise.all([
+        window.HiperApi.api("list", { query: { resource: "products" } }).then(res => state.products = res.items || []).catch(() => []),
+        window.HiperApi.api("list", { query: { resource: "users" } }).then(res => state.users = res.items || []).catch(() => []),
+        window.HiperApi.api("list", { query: { resource: "shops" } }).then(res => state.shops = res.items || []).catch(() => []),
+        window.HiperApi.api("list", { query: { resource: "sales" } }).then(res => state.sales = res.items || []).catch(() => []),
+        window.HiperReports ? window.HiperReports.loadReports().catch(() => []) : Promise.resolve()
+      ]);
+    } catch {
+      // Continue with available state
+    }
 
     if (window.HiperHome) {
       window.HiperHome.renderShopStories();
@@ -218,6 +227,7 @@ window.HiperApp = (() => {
 
   function init() {
     bindEvents();
+    if (window.HiperHome) window.HiperHome.loadDashboard();
     if (window.HiperPos) window.HiperPos.renderCart();
     window.HiperApi.checkHealth();
     restoreSession();

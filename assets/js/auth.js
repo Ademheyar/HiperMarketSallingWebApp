@@ -84,7 +84,7 @@ window.HiperAuth = (() => {
   async function restoreSession() {
     if (!state.token) {
       updateAccountUi();
-      showLogin();
+      if (window.HiperApp) window.HiperApp.loadWorkspace();
       return;
     }
     try {
@@ -96,8 +96,7 @@ window.HiperAuth = (() => {
       state.token = "";
       sessionStorage.removeItem("hiper-token");
       updateAccountUi();
-      showToast("Session expired. Please sign in again.", true);
-      showLogin();
+      if (window.HiperApp) window.HiperApp.loadWorkspace();
     }
   }
 
