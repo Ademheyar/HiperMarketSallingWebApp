@@ -18,6 +18,11 @@ window.HiperApp = (() => {
       window.HiperReports ? window.HiperReports.loadReports() : Promise.resolve()
     ]);
 
+    if (window.HiperHome) {
+      window.HiperHome.renderShopStories();
+      window.HiperHome.renderProductsFeed();
+      window.HiperHome.updateHeaderCartBadge();
+    }
     if (window.HiperProducts) window.HiperProducts.renderProducts();
     if (window.HiperCustomers) window.HiperCustomers.renderUsers();
     if (window.HiperShops) window.HiperShops.renderShops();

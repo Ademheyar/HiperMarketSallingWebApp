@@ -95,6 +95,9 @@ window.HiperPos = (() => {
       state.cart.push({ product, quantity: 1, price: Number(product.price) || 0 });
     }
     renderCart();
+    if (window.HiperHome && window.HiperHome.updateHeaderCartBadge) {
+      window.HiperHome.updateHeaderCartBadge();
+    }
   }
 
   function cartTotal() {
