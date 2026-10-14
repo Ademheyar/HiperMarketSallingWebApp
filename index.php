@@ -197,7 +197,6 @@ try {
 
           <div class="profile-action-bar">
             <button class="button button-primary" data-open-view="pos">POS Terminal</button>
-            <button class="button button-secondary" id="prof-manage-btn">⚙️ Manage Panel</button>
             <button class="button button-secondary" data-open-view="settings">Edit Profile</button>
           </div>
 

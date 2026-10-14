@@ -2,12 +2,21 @@
  * documents.css - Manage Documents Module Styling (100% Matching DocumentsScreen.kt, Doc.py, Chart.py & docediterform.py)
  */
 
+/* SUBFRAME CONTAINER MOBILE FIT */
+#mgr-subframe-sales, #main-docs-container, #open-doc-editors-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 /* TOP NOTEBOOK TABS BAR (Documents tab + Selected Open Doc tabs) */
 .top-doc-tabs-bar {
   display: flex;
   align-items: center;
   gap: 6px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
   background: #08111e;
   padding: 6px 6px 0 6px;
   border-bottom: 2px solid #1565c0;
@@ -29,6 +38,7 @@
   font-weight: 800;
   white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
+  flex: 0 0 auto;
 }
 
 .top-doc-tab:hover {
@@ -83,21 +93,39 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
 }
 
 .doc-filter-row {
   display: flex;
   gap: 8px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
   align-items: center;
-  padding-bottom: 2px;
+  padding-bottom: 4px;
+  width: 100%;
+}
+
+.doc-filter-row::-webkit-scrollbar,
+.top-doc-tabs-bar::-webkit-scrollbar,
+.notebook-tabs-row::-webkit-scrollbar {
+  height: 4px;
+}
+
+.doc-filter-row::-webkit-scrollbar-thumb,
+.top-doc-tabs-bar::-webkit-scrollbar-thumb,
+.notebook-tabs-row::-webkit-scrollbar-thumb {
+  background: #1565c0;
+  border-radius: 2px;
 }
 
 .doc-filter-field {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 100px;
+  min-width: 110px;
+  flex: 0 0 auto;
 }
 
 .doc-filter-field span {
@@ -114,6 +142,7 @@
   border: 1px solid var(--line);
   border-radius: 4px;
   color: var(--text);
+  width: 100%;
 }
 
 .doc-checkbox-group {
@@ -124,20 +153,23 @@
   color: var(--text);
   white-space: nowrap;
   cursor: pointer;
+  flex: 0 0 auto;
 }
 
 .doc-action-bar {
   display: flex;
   gap: 6px;
   margin-top: 4px;
+  flex-wrap: wrap;
 }
 
 .doc-action-bar .button {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 36px;
   font-size: 12px;
   font-weight: 800;
   border-radius: 4px;
+  min-width: 70px;
 }
 
 .doc-btn-search, .doc-btn-view { background: #1565c0; color: #fff; }
@@ -156,6 +188,8 @@
   display: flex;
   gap: 4px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
   background: var(--panel);
   padding: 4px 4px 0 4px;
   border-bottom: 1px solid var(--line);
@@ -175,6 +209,7 @@
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .notebook-tab.active {
@@ -223,7 +258,7 @@
 }
 
 .summary-header-card {
-  padding: 8px 14px;
+  padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: #08111e;
@@ -232,9 +267,20 @@
   font-weight: 800;
   text-align: center;
   margin-bottom: 10px;
+  word-break: break-word;
 }
 
 /* CHART CONTROLS & STYLING (Chart.py) */
+.chart-controls-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
 .chart-controls-bar select.compact-select {
   padding: 4px 8px;
   font-size: 11px;
@@ -243,6 +289,7 @@
   border: 1px solid var(--line);
   color: var(--text);
   border-radius: 4px;
+  flex: 1 1 auto;
 }
 
 .chart-listbox-item {
@@ -263,12 +310,6 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-top: 12px;
-}
-
-@media (max-width: 900px) {
-  .report-metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 .report-card.action-card {
@@ -307,7 +348,7 @@
 
 .report-card.highlight strong {
   color: #ffffff;
-  font-size: 22px;
+  font-size: 20px;
 }
 
 /* DOCUMENT EDITOR TAB STYLING (docediterform.py) */
@@ -315,6 +356,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
 }
 
 .editor-sub-tabs {
@@ -334,6 +376,8 @@
   cursor: pointer;
   font-size: 12px;
   font-weight: 800;
+  flex: 1;
+  text-align: center;
 }
 
 .editor-sub-tab.active {
@@ -350,4 +394,80 @@
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
+}
+
+/* PHONE BROWSER MOBILE RESPONSIVENESS ADJUSTMENTS (< 768px & < 480px) */
+@media (max-width: 768px) {
+  .top-doc-tab {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .doc-filter-panel {
+    padding: 8px;
+  }
+
+  .doc-action-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .report-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .report-card {
+    padding: 8px 10px;
+  }
+
+  .report-card strong {
+    font-size: 15px;
+  }
+
+  .report-card.highlight strong {
+    font-size: 17px;
+  }
+
+  .chart-flex-wrapper {
+    flex-direction: column !important;
+  }
+
+  #doc-chart-listbox {
+    width: 100% !important;
+    max-height: 180px;
+  }
+
+  #doc-chart-container {
+    height: 200px !important;
+  }
+
+  .payment-tools-bar .input, .payment-tools-bar .button {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .doc-action-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .report-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .report-card span {
+    font-size: 9px;
+  }
+
+  .report-card strong {
+    font-size: 13px;
+  }
+
+  .summary-header-card {
+    font-size: 10px;
+    padding: 6px 8px;
+  }
 }

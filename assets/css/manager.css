@@ -1,10 +1,12 @@
 /**
- * manager.css - Vertical Collapsible Manager Sidebar & Sub-Frames (Matching ManageForm.py)
+ * manager.css - Vertical Collapsible Manager Sidebar & Sub-Frames (Matching ManageForm.py & Responsive Mobile Phone Layout)
  */
 .manager-layout-wrapper {
   display: flex;
   gap: 16px;
   align-items: flex-start;
+  width: 100%;
+  max-width: 100%;
 }
 
 .manager-sidebar {
@@ -14,7 +16,7 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 12px 8px;
-  transition: width 0.2s ease;
+  transition: width 0.2s ease, all 0.2s ease;
 }
 
 /* Collapsed Icons-Only State */
@@ -92,4 +94,45 @@
 .manager-frame-container {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
+}
+
+/* RESPONSIVE PHONE BROWSER LAYOUT ADJUSTMENTS */
+@media (max-width: 768px) {
+  .manager-layout-wrapper {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .manager-sidebar, .manager-sidebar.collapsed {
+    width: 100% !important;
+    padding: 8px;
+    border-radius: 8px;
+  }
+
+  .manager-sidebar-header {
+    margin-bottom: 6px;
+  }
+
+  .manager-nav-list {
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-bottom: 4px;
+  }
+
+  .mgr-nav-btn {
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .manager-sidebar.collapsed .mgr-nav-text {
+    display: inline;
+  }
+
+  .manager-frame-container {
+    width: 100%;
+  }
 }
