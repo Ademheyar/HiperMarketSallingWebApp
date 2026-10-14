@@ -718,6 +718,75 @@ try {
     </main>
   </div>
 
+  <!-- PRODUCT DETAIL & VARIANT SELECTION MODAL -->
+  <dialog class="dialog" id="product-detail-dialog" style="width: min(720px, calc(100% - 24px)); max-height: min(92vh, 850px);">
+    <div class="dialog-card" style="padding: 20px;">
+      <div class="dialog-heading" style="margin-bottom: 12px;">
+        <div>
+          <p class="eyebrow" id="pdetail-shop-name">VERIFIED MERCHANT</p>
+          <h2 id="pdetail-title">Product Details</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-pdetail-dialog" aria-label="Close">×</button>
+      </div>
+
+      <div class="product-detail-layout" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px;">
+        <!-- Left Column: Image Gallery -->
+        <div class="product-gallery-box">
+          <div class="main-gallery-image" id="pdetail-main-img-box" style="width: 100%; height: 240px; background: #08111e; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+            <div id="pdetail-img-display" style="font-size: 72px;">📦</div>
+            <span class="post-price-badge" id="pdetail-price-badge" style="font-size: 16px; top: 12px; right: 12px;">$0.00</span>
+          </div>
+          <!-- Image Thumbnails -->
+          <div class="gallery-thumbs-row" id="pdetail-thumbs-row" style="display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 4px;"></div>
+        </div>
+
+        <!-- Right Column: Product Options & Add to Cart -->
+        <div class="product-info-box" style="display: flex; flex-direction: column; gap: 12px;">
+          <p class="muted" id="pdetail-desc" style="font-size: 13px; line-height: 1.5; margin: 0;"></p>
+
+          <!-- Color Selection -->
+          <div class="option-section">
+            <span class="field-label" style="font-weight: 700;">Select Color: <strong id="selected-color-name" style="color: var(--accent);">Default</strong></span>
+            <div class="options-pills-row" id="pdetail-colors-row" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;"></div>
+          </div>
+
+          <!-- Size Selection -->
+          <div class="option-section">
+            <span class="field-label" style="font-weight: 700;">Select Size: <strong id="selected-size-name" style="color: var(--accent);">Standard</strong></span>
+            <div class="options-pills-row" id="pdetail-sizes-row" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;"></div>
+          </div>
+
+          <!-- Quantity & Price Calculator -->
+          <div class="form-grid compact margin-top-xs" style="align-items: center;">
+            <label class="field">
+              <span>Quantity</span>
+              <span style="display: flex; align-items: center; gap: 6px;">
+                <button class="button button-secondary button-small" type="button" id="btn-qty-minus" style="width: 32px; font-weight: 900;">-</button>
+                <input class="input" id="pdetail-qty-input" type="number" min="1" value="1" style="text-align: center; font-weight: 800; width: 60px;">
+                <button class="button button-secondary button-small" type="button" id="btn-qty-plus" style="width: 32px; font-weight: 900;">+</button>
+              </span>
+            </label>
+            <div class="field" style="text-align: right;">
+              <span>Total Price</span>
+              <strong id="pdetail-calc-total" style="font-size: 22px; color: var(--success);">$0.00</strong>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 6px;">
+            <button class="button button-primary full-width" id="btn-pdetail-add-cart" style="font-size: 13px;">🛍️ Add to Cart</button>
+            <button class="button button-secondary full-width" id="btn-pdetail-buy-now" style="font-size: 13px;">⚡ Buy Now</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- More Product Suggestions Section -->
+      <div class="margin-top-md" style="border-top: 1px solid var(--line); padding-top: 14px;">
+        <h4 style="margin-bottom: 10px;">More Product Suggestions</h4>
+        <div id="pdetail-suggestions-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; max-height: 180px; overflow-y: auto;"></div>
+      </div>
+    </div>
+  </dialog>
+
   <!-- END DAY CONFIRMATION DIALOG (Doc.py perform_endday) -->
   <dialog class="dialog" id="end-day-dialog" style="width: min(680px, calc(100% - 24px));">
     <div class="dialog-card" style="padding: 20px;">
