@@ -1053,9 +1053,8 @@ window.HiperDocuments = (() => {
       }
     });
 
-    $("#btn-end-day")?.addEventListener("click", () => {
-      showToast("End Day reconciliation process completed for current date!");
-    });
+    $("#btn-end-day")?.addEventListener("click", openEndDayDialog);
+    $("#pos-endday-btn")?.addEventListener("click", openEndDayDialog);
 
     $("#btn-doc-delete")?.addEventListener("click", () => {
       if (state.selectedDocInTable) {
@@ -1095,9 +1094,158 @@ window.HiperDocuments = (() => {
     });
   }
 
+  function openEndDayDialog() {
+    const dialog = $("#end-day-dialog");
+    if (!dialog) return;
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const docs = state.sales || [];
+
+    const todayDocs = docs.filter(d => {
+      const cDate = String(d.doc_created_date || "").split(" ")[0];
+      return !cDate || cDate === todayStr;
+    });
+
+    const totalSalesToday = todayDocs.reduce((s, d) => s + (parseFloat(d.price) || 0), 0);
+    const transCount = todayDocs.length;
+    const totalProducts = (state.products || []).length;
+    const lowStockCount = (state.products || []).filter(p => (parseFloat(p.quantity) || 0) <= 5).length;
+    const activeShopsCount = (state.shops || []).length || 1;
+
+    // Update Metric Cards in End Day Frame (Moved from Home)
+    if ($("#endday-metric-sales")) $("#endday-metric-sales").textContent = "$" + totalSalesToday.toFixed(2);
+    if ($("#endday-metric-count")) $("#endday-metric-count").textContent = `${transCount} transactions`;
+    if ($("#endday-metric-products")) $("#endday-metric-products").textContent = String(totalProducts);
+    if ($("#endday-metric-stock")) $("#endday-metric-stock").textContent = String(lowStockCount);
+    if ($("#endday-metric-shops")) $("#endday-metric-shops").textContent = String(activeShopsCount);
+
+    // Calculate Expenses & Payouts (Doc.py)
+    let totalExpenses = 0;
+    (state.shops || []).forEach(sh => {
+      try {
+        const exList = typeof sh.Shop_Expenses === "string" ? JSON.parse(sh.Shop_Expenses) : (sh.Shop_Expenses || []);
+        exList.forEach(ex => totalExpenses += (parseFloat(ex[2] || ex.amount) || 0));
+      } catch {}
+    });
+
+    let cashReceived = 0;
+    let cardReceived = 0;
+    let grossProfit = 0;
+
+    todayDocs.forEach(d => {
+      const price = parseFloat(d.price) || 0;
+      const pid = parseFloat(d.pid) || price;
+      const profit = parseFloat(d.Profite) || (price * 0.35);
+      const payType = String(d.payments || "Cash").toLowerCase();
+
+      grossProfit += profit;
+      if (payType.includes("card")) cardReceived += pid;
+      else cashReceived += pid;
+    });
+
+    const totalReceived = cashReceived + cardReceived;
+    const cashOuts = 0;
+    const totalDeductions = totalExpenses + cashOuts;
+    const profitAfterExpenses = grossProfit - totalDeductions;
+    const totalAfterExpenses = totalReceived - totalDeductions;
+
+    // Update Doc.py Financial Summary Labels
+    if ($("#endday-date-label")) $("#endday-date-label").textContent = `DATE : ${todayStr}`;
+    if ($("#endday-val-expenses")) $("#endday-val-expenses").textContent = `-$${totalExpenses.toFixed(2)}`;
+    if ($("#endday-val-cashouts")) $("#endday-val-cashouts").textContent = `-$${cashOuts.toFixed(2)}`;
+    if ($("#endday-val-cash")) $("#endday-val-cash").textContent = `$${cashReceived.toFixed(2)}`;
+    if ($("#endday-val-card")) $("#endday-val-card").textContent = `$${cardReceived.toFixed(2)}`;
+    if ($("#endday-val-received")) $("#endday-val-received").textContent = `$${totalReceived.toFixed(2)}`;
+    if ($("#endday-val-profit")) $("#endday-val-profit").textContent = `$${grossProfit.toFixed(2)}`;
+    if ($("#endday-val-profit-after")) $("#endday-val-profit-after").textContent = `$${profitAfterExpenses.toFixed(2)}`;
+    if ($("#endday-val-total-after")) $("#endday-val-total-after").textContent = `$${totalAfterExpenses.toFixed(2)}`;
+
+    // Populate Tab 2 Documents List (Doc.py)
+    const docsBody = $("#endday-docs-body");
+    if (docsBody) {
+      docsBody.replaceChildren();
+      todayDocs.forEach((doc, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td><strong>${doc.doc_barcode || doc.id}</strong></td>
+          <td>${doc.At_Shop_Id || "Main Shop"}</td>
+          <td>${doc.customer_id || "-"}</td>
+          <td>${doc.user_id || "admin"}</td>
+          <td>$${(parseFloat(doc.price) || 0).toFixed(2)}</td>
+          <td>${doc.doc_created_date || todayStr}</td>
+        `;
+        docsBody.append(tr);
+      });
+      if (todayDocs.length === 0) {
+        docsBody.innerHTML = `<tr><td colspan="7" class="empty-state">No documents for today.</td></tr>`;
+      }
+    }
+
+    // Bind Tab Switches inside End Day Dialog
+    $("#endday-tab-total")?.onclick = () => {
+      $("#endday-tab-total")?.classList.add("active");
+      $("#endday-tab-docs")?.classList.remove("active");
+      $("#endday-view-total")?.classList.remove("hidden");
+      $("#endday-view-docs")?.classList.add("hidden");
+    };
+
+    $("#endday-tab-docs")?.onclick = () => {
+      $("#endday-tab-docs")?.classList.add("active");
+      $("#endday-tab-total")?.classList.remove("active");
+      $("#endday-view-docs")?.classList.remove("hidden");
+      $("#endday-view-total")?.classList.add("hidden");
+    };
+
+    $("#close-endday-dialog")?.onclick = () => {
+      dialog.close();
+    };
+
+    $("#btn-endday-refresh")?.onclick = () => {
+      openEndDayDialog();
+      showToast("End Day summary refreshed.");
+    };
+
+    $("#btn-endday-print")?.onclick = () => {
+      const printStr = [
+        "END DAY SUMMARY REPORT",
+        `Date: ${todayStr}`,
+        "----------------------------------------",
+        `Sales Today: $${totalSalesToday.toFixed(2)} (${transCount} transactions)`,
+        `Cash Received: $${cashReceived.toFixed(2)}`,
+        `Card Received: $${cardReceived.toFixed(2)}`,
+        `Total Received: $${totalReceived.toFixed(2)}`,
+        `Expenses: -$${totalExpenses.toFixed(2)}`,
+        `Gross Profit: $${grossProfit.toFixed(2)}`,
+        `Profit After Exp: $${profitAfterExpenses.toFixed(2)}`,
+        `Total After Exp: $${totalAfterExpenses.toFixed(2)}`,
+        "----------------------------------------",
+        "Printed from Hiper Market Web"
+      ].join("\n");
+
+      if ($("#receipt-title")) $("#receipt-title").textContent = "End Day Report";
+      if ($("#receipt-content")) $("#receipt-content").textContent = printStr;
+      const receiptDialog = $("#sale-detail-dialog");
+      if (receiptDialog) receiptDialog.showModal();
+    };
+
+    if (typeof dialog.showModal === "function" && !dialog.open) {
+      dialog.showModal();
+    }
+  }
+
   return {
     populateUserDropdown,
     performDocSearch,
+    renderNotebookTabs,
+    renderSales,
+    openDocumentInTopTab,
+    closeTopTab,
+    switchTopTab,
+    openEndDayDialog,
+    bindDocEvents
+  };
+})();
     renderNotebookTabs,
     renderSales,
     openDocumentInTopTab,

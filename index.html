@@ -66,38 +66,42 @@
     <header class="topbar">
       <button class="icon-button mobile-menu" id="menu-toggle" aria-label="Open navigation">☰</button>
       <div><p class="eyebrow" id="page-kicker">HIPER MARKET</p><h1 id="page-title">Home / Feed</h1></div>
+
+      <!-- Header E-Commerce Search Bar -->
+      <div class="topbar-search-box" style="flex: 1; max-width: 380px; margin: 0 12px;">
+        <input class="input header-search-input" id="header-search-input" placeholder="🔍 Search products, shops, marketplace...">
+      </div>
+
       <div class="topbar-right">
+        <button class="button button-primary button-small" id="header-cart-btn" data-open-view="pos">🛒 Cart <span class="count-pill" id="header-cart-badge">0</span></button>
         <span class="user-name" id="user-name">Not signed in</span>
-        <button class="button button-primary button-small" id="open-login-btn">🛡️ Security Log In</button>
       </div>
     </header>
 
-    <!-- 1. OVERVIEW / HOME FEED VIEW -->
+    <!-- 1. OVERVIEW / HOME FEED VIEW (Instagram-Style E-Commerce Feed & Sliding Shops) -->
     <section class="view active" id="view-overview">
-      <div class="welcome-row">
-        <div><p class="eyebrow">BUSINESS OVERVIEW</p><h2>Welcome to Hiper Market Web</h2><p class="muted">Connected SQL Database Server.</p></div>
-        <button class="button button-primary" data-open-view="pos">Open POS Terminal <span>→</span></button>
+      <!-- Top Instagram-style Sliding Shops Row -->
+      <div class="shop-stories-container">
+        <p class="eyebrow margin-bottom-xs" style="margin-bottom: 6px;">POPULAR STORES &amp; SHOPS</p>
+        <div class="shop-stories-slider" id="home-shop-stories">
+          <!-- Populated dynamically e.g. [Main Shop] [Flag Squer] [Fashion Hub] -->
+        </div>
       </div>
-      <div class="metric-grid">
-        <article class="metric-card"><span class="metric-label">Sales Today</span><strong id="metric-sales">$0.00</strong><small id="metric-sales-count">0 transactions today</small></article>
-        <article class="metric-card"><span class="metric-label">Total Products</span><strong id="metric-products">0</strong><small>In connected SQL DB</small></article>
-        <article class="metric-card"><span class="metric-label">Low Stock Alert</span><strong id="metric-stock">0</strong><small>At or below 5 units</small></article>
-        <article class="metric-card"><span class="metric-label">Active Shops</span><strong id="metric-shops">1</strong><small>Store locations</small></article>
-      </div>
-      <div class="content-grid">
-        <article class="panel">
-          <div class="panel-heading"><div><p class="eyebrow">QUICK ACCESS</p><h3>Terminal Modules</h3></div></div>
-          <div class="quick-grid">
-            <button class="quick-card" data-open-view="pos"><span class="quick-icon">💻</span><strong>POS Terminal</strong><small>Scan items, calculate totals, and checkout</small></button>
-            <button class="quick-card" data-open-view="profile"><span class="quick-icon">👤</span><strong>User Profile</strong><small>Manage account, statistics, and manager panel</small></button>
+
+      <!-- Instagram-Style Products Feed Posts -->
+      <div class="ecommerce-feed-container margin-top-md">
+        <div class="feed-header-toolbar">
+          <h2>Marketplace Feed</h2>
+          <div class="feed-filters">
+            <button class="feed-filter-btn active" data-filter="all">All Products</button>
+            <button class="feed-filter-btn" data-filter="popular">Popular</button>
+            <button class="feed-filter-btn" data-filter="new">New Arrival</button>
           </div>
-        </article>
-        <article class="panel server-panel">
-          <p class="eyebrow">SERVER SQL CONNECTION</p>
-          <h3 id="server-heading"><?php echo $dbConnected ? 'Server and SQL DB Connected' : 'Ready'; ?></h3>
-          <p class="muted" id="server-detail"><?php echo $dbConnected ? 'PHP API and PDO SQL connection verified.' : 'Database ready.'; ?></p>
-          <button class="button button-secondary" id="retry-health">Test SQL Health</button>
-        </article>
+        </div>
+
+        <div class="instagram-posts-grid" id="home-products-feed">
+          <p class="empty-state">Loading marketplace catalog...</p>
+        </div>
       </div>
     </section>
 
@@ -108,7 +112,7 @@
         <div class="toolbar-actions pos-action-bar">
           <button class="button button-secondary" id="pos-calc-btn">🧮 Calcu (F1)</button>
           <button class="button button-secondary" id="pos-none-item-btn">📦 None (F2)</button>
-          <button class="button button-secondary" id="pos-activities-btn">⚡ Activities (F6)</button>
+          <button class="button button-secondary" id="pos-endday-btn">⚡ End Day</button>
           <button class="button button-primary" id="pos-payment-btn">💳 Payment (F10)</button>
           <button class="button button-secondary" id="pos-drawer-btn">💵 Cash Drawer</button>
           <button class="button button-secondary" id="clear-cart">Clear Cart</button>
@@ -679,6 +683,83 @@
     <div class="toast" id="toast" role="status"></div>
   </main>
 </div>
+
+<!-- END DAY CONFIRMATION DIALOG (Doc.py perform_endday) -->
+<dialog class="dialog" id="end-day-dialog" style="width: min(680px, calc(100% - 24px));">
+  <div class="dialog-card" style="padding: 20px;">
+    <div class="dialog-heading">
+      <div>
+        <p class="eyebrow">DAILY RECONCILIATION &amp; SUMMARY</p>
+        <h2>⚡ End Day Confirmation</h2>
+      </div>
+      <button class="icon-button" type="button" id="close-endday-dialog" aria-label="Close">×</button>
+    </div>
+
+    <!-- End Day Notebook Tabs (Doc.py: Total & Documents) -->
+    <div class="sub-tabs-row margin-top-sm">
+      <button class="sub-tab active" id="endday-tab-total">📊 Summary &amp; Metrics</button>
+      <button class="sub-tab" id="endday-tab-docs">📄 Today's Documents</button>
+    </div>
+
+    <!-- Tab 1: Total Summary & Styled Metric Cards (Moved from Home) -->
+    <div id="endday-view-total">
+      <div class="summary-header-card margin-top-sm" id="endday-date-label">DATE : TODAY</div>
+
+      <!-- Metric Cards Grid moved from Home (Sales Today, Total Products, Low Stock, Active Shops) -->
+      <div class="metric-grid margin-top-sm" style="grid-template-columns: repeat(2, 1fr); gap: 10px;">
+        <article class="metric-card"><span class="metric-label">Sales Today</span><strong id="endday-metric-sales">$0.00</strong><small id="endday-metric-count">0 transactions</small></article>
+        <article class="metric-card"><span class="metric-label">Total Products</span><strong id="endday-metric-products">0</strong><small>In inventory</small></article>
+        <article class="metric-card"><span class="metric-label">Low Stock Alert</span><strong id="endday-metric-stock">0</strong><small>At or below 5 units</small></article>
+        <article class="metric-card"><span class="metric-label">Active Shops</span><strong id="endday-metric-shops">1</strong><small>Store locations</small></article>
+      </div>
+
+      <!-- Doc.py Detailed Financial Breakdown List -->
+      <div class="panel margin-top-md" style="background: #08111e; padding: 14px; font-size: 13px; line-height: 1.8;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 6px;">
+          <span>Expenses:</span><strong style="color: var(--danger);" id="endday-val-expenses">-$0.00</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
+          <span>Cash Outs:</span><strong style="color: var(--danger);" id="endday-val-cashouts">-$0.00</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
+          <span>Cash Received:</span><strong id="endday-val-cash">$0.00</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
+          <span>Card Received:</span><strong id="endday-val-card">$0.00</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
+          <span>Total Received:</span><strong style="color: var(--success);" id="endday-val-received">$0.00</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
+          <span>Gross Profit:</span><strong id="endday-val-profit">$0.00</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
+          <span>Profit After Expenses:</span><strong style="color: #4dd0e1;" id="endday-val-profit-after">$0.00</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding-top: 6px;">
+          <span>Total After Expenses:</span><strong style="color: var(--success); font-size: 16px;" id="endday-val-total-after">$0.00</strong>
+        </div>
+      </div>
+
+      <div class="dialog-actions margin-top-md" style="justify-content: space-between;">
+        <button class="button button-secondary" id="btn-endday-refresh">🔄 Refresh</button>
+        <button class="button button-primary" id="btn-endday-print">🖨️ Print Report Slip</button>
+      </div>
+    </div>
+
+    <!-- Tab 2: Today's Documents List -->
+    <div class="hidden" id="endday-view-docs">
+      <div class="table-scroll margin-top-sm" style="max-height: 350px;">
+        <table>
+          <thead>
+            <tr><th>No.</th><th>Document</th><th>Shop</th><th>Customer</th><th>User</th><th>Paid</th><th>Date</th></tr>
+          </thead>
+          <tbody id="endday-docs-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</dialog>
 
 <!-- SECURITY LOGIN MODAL -->
 <dialog class="dialog" id="login-dialog">

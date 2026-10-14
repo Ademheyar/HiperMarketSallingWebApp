@@ -42,6 +42,12 @@ window.HiperPos = (() => {
         window.HiperAuth.selectActiveShop(found);
       }
     });
+
+    $("#pos-endday-btn")?.addEventListener("click", () => {
+      if (window.HiperDocuments && window.HiperDocuments.openEndDayDialog) {
+        window.HiperDocuments.openEndDayDialog();
+      }
+    });
   }
 
   function renderProductSearch(searchTerm = "") {
