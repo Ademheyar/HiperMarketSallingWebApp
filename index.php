@@ -275,8 +275,7 @@ try {
             <div id="main-docs-container">
               <!-- Filter Form Grid (Doc.py / DocumentsScreen.kt) -->
               <article class="doc-filter-panel">
-                <!-- Row 1 Filters -->
-                <div class="doc-filter-row">
+                <div class="doc-filter-grid">
                   <label class="doc-filter-field"><span>Document ID:</span><input id="filter-doc-id" placeholder=""></label>
                   <label class="doc-filter-field"><span>Document Type:</span><input id="filter-doc-type" placeholder=""></label>
                   <label class="doc-filter-field"><span>Document Barcode:</span><input id="filter-doc-barcode" placeholder=""></label>
@@ -284,15 +283,14 @@ try {
                   <label class="doc-filter-field"><span>Item:</span><input id="filter-item" placeholder=""></label>
                   <label class="doc-filter-field"><span>Sold Item Info:</span><input id="filter-sold-item" placeholder=""></label>
                   <label class="doc-filter-field"><span>Discount:</span><input id="filter-discount" placeholder=""></label>
-                </div>
-
-                <!-- Row 2 Filters -->
-                <div class="doc-filter-row">
                   <label class="doc-filter-field"><span>User ID:</span><select id="filter-user-id"><option value=""></option></select></label>
-                  <label class="doc-filter-field"><span>At Shop:</span><select id="filter-at-shop"><option value="">Main Shop</option><option value="All Shops">All Shops</option></select></label>
+                  <label class="doc-filter-field"><span>At Shop:</span><select id="filter-at-shop"><option value="">All Shops</option></select></label>
                   <label class="doc-filter-field"><span>Customer ID:</span><select id="filter-customer-id"><option value=""></option></select></label>
                   <label class="doc-filter-field"><span>Seller ID:</span><select id="filter-seller-id"><option value=""></option></select></label>
+                </div>
 
+                <!-- Date Filters Row -->
+                <div class="doc-filter-grid margin-top-xs">
                   <div class="doc-checkbox-group">
                     <input type="checkbox" id="chk-created-date" checked>
                     <label for="chk-created-date">Created Date</label>

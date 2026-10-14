@@ -88,11 +88,19 @@
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 10px;
+  padding: 12px;
   margin-bottom: 10px;
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.doc-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 8px;
+  align-items: flex-end;
   width: 100%;
 }
 
@@ -124,8 +132,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 110px;
-  flex: 0 0 auto;
+  width: 100%;
 }
 
 .doc-filter-field span {
