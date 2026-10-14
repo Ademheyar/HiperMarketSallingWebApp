@@ -284,15 +284,40 @@ function handle_py_api(array $input): void
     // Software Version & Update Handler
     if (in_array(strtolower($do), ['check update', 'check_update', 'update'], true)) {
         $currentVersion = trim((string)($input['version'] ?? '1.0.0'));
-        $latestVersion = '1.0.1'; // Server latest release version
 
-        if (version_compare($currentVersion, $latestVersion, '<')) {
+        // Determine latest version available on server (from config or scan update zip files)
+        $latestVersion = app_config()['latest_version'] ?? '1.0.1';
+        $zipFiles = glob(__DIR__ . '/updates/update_v*.zip');
+        if ($zipFiles !== false && count($zipFiles) > 0) {
+            $foundVersions = [];
+            foreach ($zipFiles as $filePath) {
+                if (preg_match('/update_v([0-9]+\.[0-9]+\.[0-9]+)\.zip$/i', $filePath, $matches)) {
+                    $foundVersions[] = $matches[1];
+                }
+            }
+            if (!empty($foundVersions)) {
+                usort($foundVersions, 'version_compare');
+                $latestVersion = end($foundVersions);
+            }
+        }
+
+        $zipFileName = 'update_v' . $latestVersion . '.zip';
+        $zipFilePath = __DIR__ . '/updates/' . $zipFileName;
+
+        $hasZipFile = file_exists($zipFilePath);
+        $isNewerVersion = version_compare($currentVersion, $latestVersion, '<');
+
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'hipermarket0.xo.je';
+        $downloadUrl = $scheme . '://' . $host . '/API/updates/' . $zipFileName;
+
+        if ($hasZipFile && $isNewerVersion) {
             app_json_response([
                 'status' => 'success',
                 'has_update' => true,
                 'latest_version' => $latestVersion,
                 'changelog' => 'Performance optimizations, security fixes, and new features.',
-                'download_url' => 'https://hipermarket0.xo.je/API/updates/update_v' . $latestVersion . '.zip'
+                'download_url' => $downloadUrl
             ]);
         } else {
             app_json_response([

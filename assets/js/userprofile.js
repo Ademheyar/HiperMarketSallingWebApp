@@ -263,7 +263,7 @@ window.HiperUserProfile = (() => {
           window.HiperAuth.renderShopActionButtons(shop, rightSide, true);
         } else {
           const btnManage = document.createElement("button");
-          btnManage.className = "button button-secondary";
+          btnManage.className = "button button-secondary button-small";
           btnManage.style.fontWeight = "700";
           btnManage.textContent = "✔ Manage";
           btnManage.type = "button";
@@ -271,7 +271,20 @@ window.HiperUserProfile = (() => {
             if (window.HiperAuth) window.HiperAuth.selectActiveShop(shop);
             if (window.HiperApp) window.HiperApp.navigate("manager");
           });
-          rightSide.append(btnManage);
+
+          const btnEndDay = document.createElement("button");
+          btnEndDay.className = "button button-secondary button-small";
+          btnEndDay.style.fontWeight = "700";
+          btnEndDay.textContent = "⚡ End Day";
+          btnEndDay.type = "button";
+          btnEndDay.addEventListener("click", () => {
+            if (window.HiperAuth) window.HiperAuth.selectActiveShop(shop);
+            if (window.HiperDocuments && window.HiperDocuments.openEndDayDialog) {
+              window.HiperDocuments.openEndDayDialog(shop);
+            }
+          });
+
+          rightSide.append(btnManage, btnEndDay);
         }
 
         card.append(leftSide, rightSide);

@@ -1119,34 +1119,51 @@ window.HiperDocuments = (() => {
     });
   }
 
-  function openEndDayDialog() {
+  function openEndDayDialog(targetShop = null) {
     const dialog = $("#end-day-dialog");
     if (!dialog) return;
+
+    // Target shop filter
+    const shopObj = targetShop || state.activeShop || (state.shops ? state.shops[0] : null);
+    const shopName = shopObj ? (shopObj.Shop_name || shopObj.name || shopObj.Shop_brand_name || "Main Shop") : "Main Shop";
 
     const todayStr = new Date().toISOString().split("T")[0];
     const docs = state.sales || [];
 
+    // Filter today's sales for target shop
     const todayDocs = docs.filter(d => {
       const cDate = String(d.doc_created_date || "").split(" ")[0];
-      return !cDate || cDate === todayStr;
+      const matchDate = !cDate || cDate === todayStr;
+      const docShop = String(d.At_Shop_Id || d.at_shop || d.Shop_name || "").toLowerCase();
+      const matchShop = !shopName || shopName.toLowerCase() === "all shops" || docShop.includes(shopName.toLowerCase());
+      return matchDate && matchShop;
     });
 
     const totalSalesToday = todayDocs.reduce((s, d) => s + (parseFloat(d.price) || 0), 0);
     const transCount = todayDocs.length;
-    const totalProducts = (state.products || []).length;
-    const lowStockCount = (state.products || []).filter(p => (parseFloat(p.quantity) || 0) <= 5).length;
-    const activeShopsCount = (state.shops || []).length || 1;
+    const totalProducts = (state.products || []).filter(p => {
+      if (!shopName || shopName.toLowerCase() === "all shops") return true;
+      return String(p.at_shop || p.Shop_name || "").toLowerCase().includes(shopName.toLowerCase());
+    }).length;
 
-    // Update Metric Cards in End Day Frame (Moved from Home)
+    const lowStockCount = (state.products || []).filter(p => {
+      const matchShop = !shopName || shopName.toLowerCase() === "all shops" || String(p.at_shop || p.Shop_name || "").toLowerCase().includes(shopName.toLowerCase());
+      return matchShop && (parseFloat(p.quantity) || 0) <= 5;
+    }).length;
+
+    const activeShopsCount = targetShop ? 1 : ((state.shops || []).length || 1);
+
+    // Update Metric Cards in End Day Frame
     if ($("#endday-metric-sales")) $("#endday-metric-sales").textContent = "$" + totalSalesToday.toFixed(2);
     if ($("#endday-metric-count")) $("#endday-metric-count").textContent = `${transCount} transactions`;
     if ($("#endday-metric-products")) $("#endday-metric-products").textContent = String(totalProducts);
     if ($("#endday-metric-stock")) $("#endday-metric-stock").textContent = String(lowStockCount);
     if ($("#endday-metric-shops")) $("#endday-metric-shops").textContent = String(activeShopsCount);
 
-    // Calculate Expenses & Payouts (Doc.py)
+    // Calculate Expenses for shop (Doc.py)
     let totalExpenses = 0;
-    (state.shops || []).forEach(sh => {
+    const shopsToProcess = shopObj ? [shopObj] : (state.shops || []);
+    shopsToProcess.forEach(sh => {
       try {
         const exList = typeof sh.Shop_Expenses === "string" ? JSON.parse(sh.Shop_Expenses) : (sh.Shop_Expenses || []);
         exList.forEach(ex => totalExpenses += (parseFloat(ex[2] || ex.amount) || 0));
@@ -1175,7 +1192,7 @@ window.HiperDocuments = (() => {
     const totalAfterExpenses = totalReceived - totalDeductions;
 
     // Update Doc.py Financial Summary Labels
-    if ($("#endday-date-label")) $("#endday-date-label").textContent = `DATE : ${todayStr}`;
+    if ($("#endday-date-label")) $("#endday-date-label").textContent = `DATE : ${todayStr} • SHOP: ${shopName.toUpperCase()}`;
     if ($("#endday-val-expenses")) $("#endday-val-expenses").textContent = `-$${totalExpenses.toFixed(2)}`;
     if ($("#endday-val-cashouts")) $("#endday-val-cashouts").textContent = `-$${cashOuts.toFixed(2)}`;
     if ($("#endday-val-cash")) $("#endday-val-cash").textContent = `$${cashReceived.toFixed(2)}`;
@@ -1194,7 +1211,7 @@ window.HiperDocuments = (() => {
         tr.innerHTML = `
           <td>${idx + 1}</td>
           <td><strong>${doc.doc_barcode || doc.id}</strong></td>
-          <td>${doc.At_Shop_Id || "Main Shop"}</td>
+          <td>${doc.At_Shop_Id || shopName}</td>
           <td>${doc.customer_id || "-"}</td>
           <td>${doc.user_id || "admin"}</td>
           <td>$${(parseFloat(doc.price) || 0).toFixed(2)}</td>
@@ -1203,38 +1220,39 @@ window.HiperDocuments = (() => {
         docsBody.append(tr);
       });
       if (todayDocs.length === 0) {
-        docsBody.innerHTML = `<tr><td colspan="7" class="empty-state">No documents for today.</td></tr>`;
+        docsBody.innerHTML = `<tr><td colspan="7" class="empty-state">No documents for today at ${shopName}.</td></tr>`;
       }
     }
 
     // Bind Tab Switches inside End Day Dialog
-    $("#endday-tab-total")?.onclick = () => {
+    $("#endday-tab-total")!.onclick = () => {
       $("#endday-tab-total")?.classList.add("active");
       $("#endday-tab-docs")?.classList.remove("active");
       $("#endday-view-total")?.classList.remove("hidden");
       $("#endday-view-docs")?.classList.add("hidden");
     };
 
-    $("#endday-tab-docs")?.onclick = () => {
+    $("#endday-tab-docs")!.onclick = () => {
       $("#endday-tab-docs")?.classList.add("active");
       $("#endday-tab-total")?.classList.remove("active");
       $("#endday-view-docs")?.classList.remove("hidden");
       $("#endday-view-total")?.classList.add("hidden");
     };
 
-    $("#close-endday-dialog")?.onclick = () => {
+    $("#close-endday-dialog")!.onclick = () => {
       dialog.close();
     };
 
-    $("#btn-endday-refresh")?.onclick = () => {
-      openEndDayDialog();
+    $("#btn-endday-refresh")!.onclick = () => {
+      openEndDayDialog(targetShop);
       showToast("End Day summary refreshed.");
     };
 
-    $("#btn-endday-print")?.onclick = () => {
+    $("#btn-endday-print")!.onclick = () => {
       const printStr = [
         "END DAY SUMMARY REPORT",
         `Date: ${todayStr}`,
+        `Shop: ${shopName}`,
         "----------------------------------------",
         `Sales Today: $${totalSalesToday.toFixed(2)} (${transCount} transactions)`,
         `Cash Received: $${cashReceived.toFixed(2)}`,
@@ -1247,6 +1265,17 @@ window.HiperDocuments = (() => {
         "----------------------------------------",
         "Printed from Hiper Market Web"
       ].join("\n");
+
+      if ($("#receipt-title")) $("#receipt-title").textContent = `End Day Report - ${shopName}`;
+      if ($("#receipt-content")) $("#receipt-content").textContent = printStr;
+      const receiptDialog = $("#sale-detail-dialog");
+      if (receiptDialog) receiptDialog.showModal();
+    };
+
+    if (typeof dialog.showModal === "function" && !dialog.open) {
+      dialog.showModal();
+    }
+  }
 
       if ($("#receipt-title")) $("#receipt-title").textContent = "End Day Report";
       if ($("#receipt-content")) $("#receipt-content").textContent = printStr;

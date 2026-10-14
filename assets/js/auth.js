@@ -201,7 +201,7 @@ window.HiperAuth = (() => {
     btnGroup.style.marginTop = "10px";
 
     if (level > 0) {
-      // Level > 0: ⚙️ Manage button on the left (manages that shop only) + 🏬 Select button for POS
+      // Level > 0: ⚙️ Manage button + ⚡ End Day button + 🏬 Select button
       const btnManage = document.createElement("button");
       btnManage.className = "button button-primary button-small";
       btnManage.textContent = "⚙️ Manage";
@@ -209,6 +209,17 @@ window.HiperAuth = (() => {
       btnManage.addEventListener("click", () => {
         selectActiveShop(shop);
         if (window.HiperApp) window.HiperApp.navigate("manager");
+      });
+
+      const btnEndDay = document.createElement("button");
+      btnEndDay.className = "button button-secondary button-small";
+      btnEndDay.textContent = "⚡ End Day";
+      btnEndDay.type = "button";
+      btnEndDay.addEventListener("click", () => {
+        selectActiveShop(shop);
+        if (window.HiperDocuments && window.HiperDocuments.openEndDayDialog) {
+          window.HiperDocuments.openEndDayDialog(shop);
+        }
       });
 
       const btnSelect = document.createElement("button");
@@ -219,7 +230,7 @@ window.HiperAuth = (() => {
         selectActiveShop(shop);
       });
 
-      btnGroup.append(btnManage, btnSelect);
+      btnGroup.append(btnManage, btnEndDay, btnSelect);
     } else if (level === 0) {
       // Level 0: 🟢 Enable button
       const btnEnable = document.createElement("button");
