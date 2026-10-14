@@ -59,21 +59,38 @@ window.HiperDocuments = (() => {
 
     if (shopSelect) {
       const cur = shopSelect.value;
-      const dbShops = (state.shops || []).map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
-      const userWorkShops = (window.HiperAuth ? window.HiperAuth.getUserWorkShops() : []).map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
-      const salesShops = (state.sales || []).map(s => s.At_Shop_Id).filter(Boolean);
 
-      // Collect all valid shops from DB, user working shops, and sales history
-      const allKnownShops = Array.from(new Set([...dbShops, ...userWorkShops, ...salesShops]));
+      // 1. List user working shops ONLY
+      const userWorkShops = window.HiperAuth ? window.HiperAuth.getUserWorkShops() : [];
+      let shopList = userWorkShops.map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
 
-      // Do NOT list "Main Shop" unless "Main Shop" is actually in DB / working shops / sales
+      // Fallback to state.shops if userWorkShops is empty
+      if (shopList.length === 0 && state.shops && state.shops.length > 0) {
+        shopList = state.shops.map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
+      }
+
+      const uniqueWorkShops = Array.from(new Set(shopList));
+
+      // 2. Empty space option for All Shops
       let optionsHtml = `<option value="">All Shops</option>`;
-      allKnownShops.forEach(s => {
-        optionsHtml += `<option value="${s}">${s}</option>`;
+      uniqueWorkShops.forEach(sName => {
+        optionsHtml += `<option value="${sName}">${sName}</option>`;
       });
 
       shopSelect.innerHTML = optionsHtml;
-      shopSelect.value = cur || "";
+
+      // 3. Default selection: User Profile selected shop or pressed Manager button shop (state.activeShop)
+      const activeShopName = state.activeShop?.Shop_name || state.activeShop?.name || state.activeShop?.Shop_brand_name || "";
+
+      if (cur) {
+        shopSelect.value = cur;
+      } else if (activeShopName && uniqueWorkShops.includes(activeShopName)) {
+        shopSelect.value = activeShopName;
+      } else if (uniqueWorkShops.length > 0) {
+        shopSelect.value = uniqueWorkShops[0];
+      } else {
+        shopSelect.value = "";
+      }
     }
   }
 
