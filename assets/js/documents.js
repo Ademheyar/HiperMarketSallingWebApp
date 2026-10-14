@@ -59,12 +59,20 @@ window.HiperDocuments = (() => {
 
     if (shopSelect) {
       const cur = shopSelect.value;
-      const uniqueShops = Array.from(
-        new Set((state.sales || []).map(s => s.At_Shop_Id).filter(Boolean))
-      );
-      if (!uniqueShops.includes("Main Shop")) uniqueShops.unshift("Main Shop");
-      shopSelect.innerHTML = `<option value="">Main Shop</option><option value="All Shops">All Shops</option>` +
-        uniqueShops.filter(s => s !== "Main Shop").map(s => `<option value="${s}">${s}</option>`).join("");
+      const dbShops = (state.shops || []).map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
+      const userWorkShops = (window.HiperAuth ? window.HiperAuth.getUserWorkShops() : []).map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
+      const salesShops = (state.sales || []).map(s => s.At_Shop_Id).filter(Boolean);
+
+      // Collect all valid shops from DB, user working shops, and sales history
+      const allKnownShops = Array.from(new Set([...dbShops, ...userWorkShops, ...salesShops]));
+
+      // Do NOT list "Main Shop" unless "Main Shop" is actually in DB / working shops / sales
+      let optionsHtml = `<option value="">All Shops</option>`;
+      allKnownShops.forEach(s => {
+        optionsHtml += `<option value="${s}">${s}</option>`;
+      });
+
+      shopSelect.innerHTML = optionsHtml;
       shopSelect.value = cur || "";
     }
   }
@@ -497,7 +505,7 @@ window.HiperDocuments = (() => {
     const showLine = $("#chart-chk-showline")?.checked ?? true;
     const showList = $("#chart-chk-showlist")?.checked ?? false;
     const style = $("#chart-style-select")?.value || "Bar Chart";
-    const timeGroup = $("#chart-time-select")?.value || "By daily";
+    const timeGroup = $("#chart-time-select")?.value || "By 30 Min";
     const labelPos = $("#chart-label-select")?.value || "Bottom";
 
     // Show/hide listbox
@@ -513,9 +521,9 @@ window.HiperDocuments = (() => {
     }
 
     const { yearly, monthly, weekly, daily, hourly, halfHour } = getWithDate(docsList);
-    let targetMap = daily;
-    if (timeGroup === "By 30 Min") targetMap = halfHour;
-    else if (timeGroup === "By hour") targetMap = hourly;
+    let targetMap = halfHour; // Default to By 30 Min
+    if (timeGroup === "By hour") targetMap = hourly;
+    else if (timeGroup === "By daily") targetMap = daily;
     else if (timeGroup === "By weekly") targetMap = weekly;
     else if (timeGroup === "By monthly") targetMap = monthly;
     else if (timeGroup === "By year") targetMap = yearly;

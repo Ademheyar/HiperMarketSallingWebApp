@@ -74,6 +74,12 @@ window.HiperApp = (() => {
     if ($("#page-kicker")) $("#page-kicker").textContent = viewName === "pos" ? "CHECKOUT" : "HIPER MARKET";
     $("#sidebar")?.classList.remove("open");
 
+    // Header Search Bar & Cart Button ONLY for Home View ("overview")
+    const searchBox = $(".topbar-search-box");
+    const cartBtn = $("#header-cart-btn");
+    if (searchBox) searchBox.style.display = (viewName === "overview") ? "block" : "none";
+    if (cartBtn) cartBtn.style.display = (viewName === "overview") ? "inline-flex" : "none";
+
     if (viewName === "manager" && window.HiperManager) {
       window.HiperManager.switchManagerTab("sales");
     }

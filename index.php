@@ -377,9 +377,9 @@ try {
                         <option value="Line Chart">Line Chart</option>
                       </select>
                       <select class="input compact-select" id="chart-time-select">
-                        <option value="By 30 Min">By 30 Min</option>
+                        <option value="By 30 Min" selected>By 30 Min</option>
                         <option value="By hour">By hour</option>
-                        <option value="By daily" selected>By daily</option>
+                        <option value="By daily">By daily</option>
                         <option value="By weekly">By weekly</option>
                         <option value="By monthly">By monthly</option>
                         <option value="By year">By year</option>
