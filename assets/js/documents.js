@@ -28,43 +28,43 @@ window.HiperDocuments = (() => {
     const customerSelect = $("#filter-customer-id");
     const shopSelect = $("#filter-at-shop");
 
-    const uniqueUsers = Array.from(
-      new Set((state.sales || []).map(s => s.user_id || s.Seller_id || "admin").filter(Boolean))
-    );
-    if (!uniqueUsers.includes("admin")) uniqueUsers.unshift("admin");
+    // Fetch all users from Database (state.users) + Sales records + current logged-in user
+    const dbUserNames = (state.users || []).map(u => u.User_name || u.User_fname || u.username).filter(Boolean);
+    const salesUserNames = (state.sales || []).map(s => s.user_id || s.Seller_id).filter(Boolean);
+    const salesCustomerNames = (state.sales || []).map(s => s.customer_id).filter(Boolean);
+    const currentUser = state.user?.User_name || "admin";
+
+    const allUserNames = Array.from(new Set([currentUser, "admin", ...dbUserNames, ...salesUserNames]));
+    const allCustomerNames = Array.from(new Set([...dbUserNames, ...salesCustomerNames]));
 
     if (userSelect) {
       const cur = userSelect.value;
       userSelect.innerHTML = `<option value=""></option>` +
-        uniqueUsers.map(u => `<option value="${u}">${u}</option>`).join("");
+        allUserNames.map(u => `<option value="${u}">${u}</option>`).join("");
       userSelect.value = cur;
     }
 
     if (sellerSelect) {
       const cur = sellerSelect.value;
       sellerSelect.innerHTML = `<option value=""></option>` +
-        uniqueUsers.map(u => `<option value="${u}">${u}</option>`).join("");
+        allUserNames.map(u => `<option value="${u}">${u}</option>`).join("");
       sellerSelect.value = cur;
     }
 
     if (customerSelect) {
       const cur = customerSelect.value;
-      const uniqueCustomers = Array.from(
-        new Set((state.sales || []).map(s => s.customer_id).filter(Boolean))
-      );
       customerSelect.innerHTML = `<option value=""></option>` +
-        uniqueCustomers.map(c => `<option value="${c}">${c}</option>`).join("");
+        allCustomerNames.map(c => `<option value="${c}">${c}</option>`).join("");
       customerSelect.value = cur;
     }
 
     if (shopSelect) {
       const cur = shopSelect.value;
 
-      // 1. List user working shops ONLY
+      // 1. List user working shops
       const userWorkShops = window.HiperAuth ? window.HiperAuth.getUserWorkShops() : [];
       let shopList = userWorkShops.map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
 
-      // Fallback to state.shops if userWorkShops is empty
       if (shopList.length === 0 && state.shops && state.shops.length > 0) {
         shopList = state.shops.map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
       }
@@ -88,6 +88,11 @@ window.HiperDocuments = (() => {
         shopSelect.value = activeShopName;
       } else if (uniqueWorkShops.length > 0) {
         shopSelect.value = uniqueWorkShops[0];
+      } else {
+        shopSelect.value = "";
+      }
+    }
+  }
       } else {
         shopSelect.value = "";
       }
