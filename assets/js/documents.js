@@ -61,38 +61,28 @@ window.HiperDocuments = (() => {
     if (shopSelect) {
       const cur = shopSelect.value;
 
-      // 1. List user working shops
-      const userWorkShops = window.HiperAuth ? window.HiperAuth.getUserWorkShops() : [];
-      let shopList = userWorkShops.map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
+      // Collect all shops from DB, user working shops, and sales records
+      const dbShops = (state.shops || []).map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
+      const userWorkShops = (window.HiperAuth ? window.HiperAuth.getUserWorkShops() : []).map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
+      const salesShops = (state.sales || []).map(s => s.At_Shop_Id).filter(Boolean);
 
-      if (shopList.length === 0 && state.shops && state.shops.length > 0) {
-        shopList = state.shops.map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
-      }
+      const uniqueShops = Array.from(new Set([...userWorkShops, ...dbShops, ...salesShops]));
 
-      const uniqueWorkShops = Array.from(new Set(shopList));
-
-      // 2. Empty space option for All Shops
+      // 1. First option: All Shops
       let optionsHtml = `<option value="">All Shops</option>`;
-      uniqueWorkShops.forEach(sName => {
+      uniqueShops.forEach(sName => {
         optionsHtml += `<option value="${sName}">${sName}</option>`;
       });
 
       shopSelect.innerHTML = optionsHtml;
 
-      // 3. Default selection: User Profile selected shop or pressed Manager button shop (state.activeShop)
+      // 2. Default selection: User Profile selected shop or active shop
       const activeShopName = state.activeShop?.Shop_name || state.activeShop?.name || state.activeShop?.Shop_brand_name || "";
 
       if (cur) {
         shopSelect.value = cur;
-      } else if (activeShopName && uniqueWorkShops.includes(activeShopName)) {
+      } else if (activeShopName && uniqueShops.includes(activeShopName)) {
         shopSelect.value = activeShopName;
-      } else if (uniqueWorkShops.length > 0) {
-        shopSelect.value = uniqueWorkShops[0];
-      } else {
-        shopSelect.value = "";
-      }
-    }
-  }
       } else {
         shopSelect.value = "";
       }
