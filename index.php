@@ -284,7 +284,7 @@ try {
                   <label class="doc-filter-field"><span>Sold Item Info:</span><input id="filter-sold-item" placeholder=""></label>
                   <label class="doc-filter-field"><span>Discount:</span><input id="filter-discount" placeholder=""></label>
                   <label class="doc-filter-field"><span>User ID:</span><select id="filter-user-id"><option value=""></option></select></label>
-                  <label class="doc-filter-field"><span>At Shop:</span><select id="filter-at-shop"><option value="">All Shops</option></select></label>
+                  <label class="doc-filter-field"><span>At Shop:</span><select id="filter-at-shop"><option value=""></option></select></label>
                   <label class="doc-filter-field"><span>Customer ID:</span><select id="filter-customer-id"><option value=""></option></select></label>
                   <label class="doc-filter-field"><span>Seller ID:</span><select id="filter-seller-id"><option value=""></option></select></label>
                 </div>

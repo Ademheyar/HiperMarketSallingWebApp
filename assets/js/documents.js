@@ -72,7 +72,7 @@ window.HiperDocuments = (() => {
       const uniqueWorkShops = Array.from(new Set(shopList));
 
       // 2. Empty space option for All Shops
-      let optionsHtml = `<option value="">All Shops</option>`;
+      let optionsHtml = `<option value=""></option>`;
       uniqueWorkShops.forEach(sName => {
         optionsHtml += `<option value="${sName}">${sName}</option>`;
       });
