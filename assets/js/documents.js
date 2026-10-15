@@ -28,74 +28,44 @@ window.HiperDocuments = (() => {
     const customerSelect = $("#filter-customer-id");
     const shopSelect = $("#filter-at-shop");
 
-    // Fetch all users from Database (state.users) + Sales records + current logged-in user
-    const dbUserNames = (state.users || []).map(u => u.User_name || u.User_fname || u.username).filter(Boolean);
-    const salesUserNames = (state.sales || []).map(s => s.user_id || s.Seller_id).filter(Boolean);
-    const salesCustomerNames = (state.sales || []).map(s => s.customer_id).filter(Boolean);
-    const currentUser = state.user?.User_name || "admin";
-
-    const allUserNames = Array.from(new Set([currentUser, "admin", ...dbUserNames, ...salesUserNames]));
-    const allCustomerNames = Array.from(new Set([...dbUserNames, ...salesCustomerNames]));
+    const uniqueUsers = Array.from(
+      new Set((state.sales || []).map(s => s.user_id || s.Seller_id || "admin").filter(Boolean))
+    );
+    if (!uniqueUsers.includes("admin")) uniqueUsers.unshift("admin");
 
     if (userSelect) {
       const cur = userSelect.value;
       userSelect.innerHTML = `<option value=""></option>` +
-        allUserNames.map(u => `<option value="${u}">${u}</option>`).join("");
+        uniqueUsers.map(u => `<option value="${u}">${u}</option>`).join("");
       userSelect.value = cur;
     }
 
     if (sellerSelect) {
       const cur = sellerSelect.value;
       sellerSelect.innerHTML = `<option value=""></option>` +
-        allUserNames.map(u => `<option value="${u}">${u}</option>`).join("");
+        uniqueUsers.map(u => `<option value="${u}">${u}</option>`).join("");
       sellerSelect.value = cur;
     }
 
     if (customerSelect) {
       const cur = customerSelect.value;
+      const uniqueCustomers = Array.from(
+        new Set((state.sales || []).map(s => s.customer_id).filter(Boolean))
+      );
       customerSelect.innerHTML = `<option value=""></option>` +
-        allCustomerNames.map(c => `<option value="${c}">${c}</option>`).join("");
+        uniqueCustomers.map(c => `<option value="${c}">${c}</option>`).join("");
       customerSelect.value = cur;
     }
 
     if (shopSelect) {
       const cur = shopSelect.value;
-
-      // 1. List user working shops
-      const userWorkShops = window.HiperAuth ? window.HiperAuth.getUserWorkShops() : [];
-      let shopList = userWorkShops.map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
-
-      if (shopList.length === 0 && state.shops && state.shops.length > 0) {
-        shopList = state.shops.map(s => s.Shop_name || s.name || s.Shop_brand_name).filter(Boolean);
-      }
-
-      const uniqueWorkShops = Array.from(new Set(shopList));
-
-      // 2. Empty space option for All Shops
-      let optionsHtml = `<option value=""></option>`;
-      uniqueWorkShops.forEach(sName => {
-        optionsHtml += `<option value="${sName}">${sName}</option>`;
-      });
-
-      shopSelect.innerHTML = optionsHtml;
-
-      // 3. Default selection: User Profile selected shop or pressed Manager button shop (state.activeShop)
-      const activeShopName = state.activeShop?.Shop_name || state.activeShop?.name || state.activeShop?.Shop_brand_name || "";
-
-      if (cur) {
-        shopSelect.value = cur;
-      } else if (activeShopName && uniqueWorkShops.includes(activeShopName)) {
-        shopSelect.value = activeShopName;
-      } else if (uniqueWorkShops.length > 0) {
-        shopSelect.value = uniqueWorkShops[0];
-      } else {
-        shopSelect.value = "";
-      }
-    }
-  }
-      } else {
-        shopSelect.value = "";
-      }
+      const uniqueShops = Array.from(
+        new Set((state.sales || []).map(s => s.At_Shop_Id).filter(Boolean))
+      );
+      if (!uniqueShops.includes("Main Shop")) uniqueShops.unshift("Main Shop");
+      shopSelect.innerHTML = `<option value="">Main Shop</option><option value="All Shops">All Shops</option>` +
+        uniqueShops.filter(s => s !== "Main Shop").map(s => `<option value="${s}">${s}</option>`).join("");
+      shopSelect.value = cur || "";
     }
   }
 
@@ -543,9 +513,9 @@ window.HiperDocuments = (() => {
     }
 
     const { yearly, monthly, weekly, daily, hourly, halfHour } = getWithDate(docsList);
-    let targetMap = halfHour; // Default to By 30 Min
-    if (timeGroup === "By hour") targetMap = hourly;
-    else if (timeGroup === "By daily") targetMap = daily;
+    let targetMap = daily;
+    if (timeGroup === "By 30 Min") targetMap = halfHour;
+    else if (timeGroup === "By hour") targetMap = hourly;
     else if (timeGroup === "By weekly") targetMap = weekly;
     else if (timeGroup === "By monthly") targetMap = monthly;
     else if (timeGroup === "By year") targetMap = yearly;
@@ -1031,8 +1001,227 @@ window.HiperDocuments = (() => {
     }
   }
 
+  function escapeHtml(str) {
+    if (str == null) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function round2(num) {
+    return Math.round((num + Number.EPSILON) * 100) / 100;
+  }
+
+  function performEndDay(todayOnly = false) {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const dateFrom = todayOnly ? today : ($("#filter-date-from")?.value || today);
+      const dateTo = todayOnly ? today : ($("#filter-date-to")?.value || dateFrom);
+
+      if (todayOnly) {
+        if ($("#filter-date-from")) $("#filter-date-from").value = today;
+        if ($("#filter-date-to")) $("#filter-date-to").value = today;
+      }
+
+      // Filter documents for active date selection
+      const activeDocs = (state.sales || []).filter(doc => {
+        const docDate = (doc.doc_created_date || "").split(" ")[0];
+        if (!docDate) return true;
+        return docDate >= dateFrom && docDate <= dateTo;
+      });
+
+      let totalCashPaid = 0;
+      let totalCardPaid = 0;
+      let totalPaid = 0;
+      let totalProfit = 0;
+      let cashOuts = 0;
+      let cardOuts = 0;
+
+      activeDocs.forEach(doc => {
+        const price = parseFloat(doc.price) || 0;
+        const pid = parseFloat(doc.pid || doc.paid) || price;
+        const payType = String(doc.payments || doc.payment_method || "").toLowerCase();
+
+        totalPaid += pid;
+        totalProfit += (price * 0.35);
+
+        if (payType.includes("out") || doc.doc_type === "out") {
+          if (payType.includes("card")) cardOuts += Math.abs(price);
+          else cashOuts += Math.abs(price);
+        } else if (payType.includes("card")) {
+          totalCardPaid += pid;
+        } else {
+          totalCashPaid += pid;
+        }
+      });
+
+      // Calculate shop expenses
+      let expenses = 0;
+      (state.shops || []).forEach(sh => {
+        try {
+          const exList = typeof sh.Shop_Expenses === "string" ? JSON.parse(sh.Shop_Expenses) : (sh.Shop_Expenses || []);
+          exList.forEach(ex => {
+            expenses += (parseFloat(ex[2] || ex.amount) || 0);
+          });
+        } catch {}
+      });
+
+      const totalOuts = cashOuts + cardOuts + expenses;
+      const profitAfterExp = round2(totalProfit - totalOuts);
+      const totalAfterExp = round2(totalPaid - totalOuts);
+
+      // Calculate inventory stock value
+      let stockValue = 0;
+      (state.products || []).forEach(p => {
+        stockValue += (parseFloat(p.price) || 0) * (parseFloat(p.quantity) || 0);
+      });
+
+      const totalAfterStock = round2(totalAfterExp - stockValue);
+
+      // Format Date Range String
+      const dateStr = dateFrom === dateTo ? `DATE: ${dateFrom}` : `FROM DATE: ${dateFrom} TO ${dateTo}`;
+      if ($("#endday-date-str")) $("#endday-date-str").textContent = dateStr;
+
+      // Update End Day Summary Cards (Matching Doc.py)
+      if ($("#endday-exp-val")) $("#endday-exp-val").textContent = "$" + round2(expenses).toFixed(2);
+      if ($("#endday-outs-val")) $("#endday-outs-val").textContent = "$" + round2(cashOuts + cardOuts).toFixed(2);
+      if ($("#endday-subouts-val")) $("#endday-subouts-val").textContent = "-$" + round2(totalOuts).toFixed(2);
+
+      if ($("#endday-cash-val")) $("#endday-cash-val").textContent = "$" + round2(totalCashPaid).toFixed(2);
+      if ($("#endday-card-val")) $("#endday-card-val").textContent = "$" + round2(totalCardPaid).toFixed(2);
+      if ($("#endday-paid-val")) $("#endday-paid-val").textContent = "$" + round2(totalPaid).toFixed(2);
+
+      if ($("#endday-profit-val")) $("#endday-profit-val").textContent = "$" + round2(totalProfit).toFixed(2);
+
+      const profitExpEl = $("#endday-profit-after-exp-val");
+      if (profitExpEl) {
+        profitExpEl.textContent = "$" + profitAfterExp.toFixed(2);
+        profitExpEl.style.color = profitAfterExp < 0 ? "#f87171" : "#4ade80";
+      }
+
+      if ($("#endday-total-after-exp-val")) $("#endday-total-after-exp-val").textContent = "$" + totalAfterExp.toFixed(2);
+      if ($("#endday-stock-val")) $("#endday-stock-val").textContent = "$" + round2(stockValue).toFixed(2);
+      if ($("#endday-total-after-stock-val")) $("#endday-total-after-stock-val").textContent = "$" + totalAfterStock.toFixed(2);
+
+      // Populate Reconciled Documents Table
+      const docsBody = $("#endday-docs-body");
+      if (docsBody) {
+        docsBody.replaceChildren();
+        activeDocs.forEach((doc, idx) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${idx + 1}</td>
+            <td><strong>${escapeHtml(doc.doc_barcode || ("DOC-" + doc.id))}</strong></td>
+            <td>${escapeHtml(doc.At_Shop_Id || doc.at_shop || "Main Shop")}</td>
+            <td>${escapeHtml(doc.customer_id || "Walk-in")}</td>
+            <td>${escapeHtml(doc.user_id || "admin")}</td>
+            <td>$${(parseFloat(doc.price) || 0).toFixed(2)}</td>
+            <td>${escapeHtml((doc.doc_created_date || "").split(" ")[0] || dateFrom)}</td>
+          `;
+          docsBody.append(row);
+        });
+
+        if (activeDocs.length === 0) {
+          docsBody.innerHTML = `<tr><td colspan="7" class="empty-state">No documents found for current date selection.</td></tr>`;
+        }
+      }
+
+      // Construct Printable End Day Slip Text (Doc.py format)
+      const endDaySlipText = [
+        "========================================",
+        "       HIPER MARKET - END DAY SLIP      ",
+        "========================================",
+        dateStr,
+        "----------------------------------------",
+        `Expenses              : $${round2(expenses).toFixed(2)}`,
+        `Cash Outs             : $${round2(cashOuts + cardOuts).toFixed(2)}`,
+        "                        -----------",
+        `Total Outflows        : -$${round2(totalOuts).toFixed(2)}`,
+        "",
+        `Cash Paid             : $${round2(totalCashPaid).toFixed(2)}`,
+        `Card Paid             : $${round2(totalCardPaid).toFixed(2)}`,
+        "                        -----------",
+        `Total Paid            : $${round2(totalPaid).toFixed(2)}`,
+        "",
+        `Gross Profit          : $${round2(totalProfit).toFixed(2)}`,
+        `Profit After Exp      : $${profitAfterExp.toFixed(2)}`,
+        `Total After Exp       : $${totalAfterExp.toFixed(2)}`,
+        `Inventory Stock       : $${round2(stockValue).toFixed(2)}`,
+        `Total After Stock     : $${totalAfterStock.toFixed(2)}`,
+        "========================================",
+        `Reconciled Documents : ${activeDocs.length} items`,
+        "========================================"
+      ].join("\n");
+
+      const dialog = $("#end-day-dialog");
+      if (dialog) {
+        dialog.dataset.slipText = endDaySlipText;
+        if (!dialog.open) dialog.showModal();
+      }
+    } catch (err) {
+      console.error("Failed to perform end day:", err);
+      const dialog = $("#end-day-dialog");
+      if (dialog && !dialog.open) dialog.showModal();
+    }
+  }
+
+  function printEndDaySlip() {
+    const dialog = $("#end-day-dialog");
+    const slipText = dialog?.dataset.slipText || "";
+    if (!slipText) {
+      if (window.HiperApi) window.HiperApi.showToast("No End Day slip data to print.", true);
+      return;
+    }
+
+    const printArea = $("#receipt-content");
+    if (printArea) {
+      printArea.textContent = slipText;
+      window.print();
+    } else {
+      if (window.HiperApi) window.HiperApi.showToast("End Day slip sent to printer!");
+    }
+  }
+
+  function bindEndDayModalEvents() {
+    $("#endday-tab-summary")?.addEventListener("click", () => {
+      $("#endday-tab-summary")?.classList.add("active");
+      $("#endday-tab-docs")?.classList.remove("active");
+      $("#endday-view-summary")?.classList.remove("hidden");
+      $("#endday-view-docs")?.classList.add("hidden");
+    });
+
+    $("#endday-tab-docs")?.addEventListener("click", () => {
+      $("#endday-tab-docs")?.classList.add("active");
+      $("#endday-tab-summary")?.classList.remove("active");
+      $("#endday-view-docs")?.classList.remove("hidden");
+      $("#endday-view-summary")?.classList.add("hidden");
+    });
+
+    $("#close-end-day-btn")?.addEventListener("click", () => {
+      $("#end-day-dialog")?.close();
+    });
+
+    $("#endday-close-btn")?.addEventListener("click", () => {
+      $("#end-day-dialog")?.close();
+    });
+
+    $("#endday-refresh-btn")?.addEventListener("click", async () => {
+      await performDocSearch();
+      performEndDay();
+      if (window.HiperApi) window.HiperApi.showToast("End Day data refreshed!");
+    });
+
+    $("#endday-print-btn")?.addEventListener("click", () => {
+      printEndDaySlip();
+    });
+  }
+
   function bindDocEvents() {
     initDocDates();
+    bindEndDayModalEvents();
 
     // Top Main Documents Tab Switcher
     $("#main-doc-tab-btn")?.addEventListener("click", () => {
@@ -1083,8 +1272,9 @@ window.HiperDocuments = (() => {
       }
     });
 
-    $("#btn-end-day")?.addEventListener("click", openEndDayDialog);
-    $("#pos-endday-btn")?.addEventListener("click", openEndDayDialog);
+    $("#btn-end-day")?.addEventListener("click", () => {
+      performEndDay();
+    });
 
     $("#btn-doc-delete")?.addEventListener("click", () => {
       if (state.selectedDocInTable) {
@@ -1124,175 +1314,6 @@ window.HiperDocuments = (() => {
     });
   }
 
-  function openEndDayDialog(targetShop = null) {
-    const dialog = $("#end-day-dialog");
-    if (!dialog) return;
-
-    // Target shop filter
-    const shopObj = targetShop || state.activeShop || (state.shops ? state.shops[0] : null);
-    const shopName = shopObj ? (shopObj.Shop_name || shopObj.name || shopObj.Shop_brand_name || "Main Shop") : "Main Shop";
-
-    const todayStr = new Date().toISOString().split("T")[0];
-    const docs = state.sales || [];
-
-    // Filter today's sales for target shop
-    const todayDocs = docs.filter(d => {
-      const cDate = String(d.doc_created_date || "").split(" ")[0];
-      const matchDate = !cDate || cDate === todayStr;
-      const docShop = String(d.At_Shop_Id || d.at_shop || d.Shop_name || "").toLowerCase();
-      const matchShop = !shopName || shopName.toLowerCase() === "all shops" || docShop.includes(shopName.toLowerCase());
-      return matchDate && matchShop;
-    });
-
-    const totalSalesToday = todayDocs.reduce((s, d) => s + (parseFloat(d.price) || 0), 0);
-    const transCount = todayDocs.length;
-    const totalProducts = (state.products || []).filter(p => {
-      if (!shopName || shopName.toLowerCase() === "all shops") return true;
-      return String(p.at_shop || p.Shop_name || "").toLowerCase().includes(shopName.toLowerCase());
-    }).length;
-
-    const lowStockCount = (state.products || []).filter(p => {
-      const matchShop = !shopName || shopName.toLowerCase() === "all shops" || String(p.at_shop || p.Shop_name || "").toLowerCase().includes(shopName.toLowerCase());
-      return matchShop && (parseFloat(p.quantity) || 0) <= 5;
-    }).length;
-
-    const activeShopsCount = targetShop ? 1 : ((state.shops || []).length || 1);
-
-    // Update Metric Cards in End Day Frame
-    if ($("#endday-metric-sales")) $("#endday-metric-sales").textContent = "$" + totalSalesToday.toFixed(2);
-    if ($("#endday-metric-count")) $("#endday-metric-count").textContent = `${transCount} transactions`;
-    if ($("#endday-metric-products")) $("#endday-metric-products").textContent = String(totalProducts);
-    if ($("#endday-metric-stock")) $("#endday-metric-stock").textContent = String(lowStockCount);
-    if ($("#endday-metric-shops")) $("#endday-metric-shops").textContent = String(activeShopsCount);
-
-    // Calculate Expenses for shop (Doc.py)
-    let totalExpenses = 0;
-    const shopsToProcess = shopObj ? [shopObj] : (state.shops || []);
-    shopsToProcess.forEach(sh => {
-      try {
-        const exList = typeof sh.Shop_Expenses === "string" ? JSON.parse(sh.Shop_Expenses) : (sh.Shop_Expenses || []);
-        exList.forEach(ex => totalExpenses += (parseFloat(ex[2] || ex.amount) || 0));
-      } catch {}
-    });
-
-    let cashReceived = 0;
-    let cardReceived = 0;
-    let grossProfit = 0;
-
-    todayDocs.forEach(d => {
-      const price = parseFloat(d.price) || 0;
-      const pid = parseFloat(d.pid) || price;
-      const profit = parseFloat(d.Profite) || (price * 0.35);
-      const payType = String(d.payments || "Cash").toLowerCase();
-
-      grossProfit += profit;
-      if (payType.includes("card")) cardReceived += pid;
-      else cashReceived += pid;
-    });
-
-    const totalReceived = cashReceived + cardReceived;
-    const cashOuts = 0;
-    const totalDeductions = totalExpenses + cashOuts;
-    const profitAfterExpenses = grossProfit - totalDeductions;
-    const totalAfterExpenses = totalReceived - totalDeductions;
-
-    // Update Doc.py Financial Summary Labels
-    if ($("#endday-date-label")) $("#endday-date-label").textContent = `DATE : ${todayStr} • SHOP: ${shopName.toUpperCase()}`;
-    if ($("#endday-val-expenses")) $("#endday-val-expenses").textContent = `-$${totalExpenses.toFixed(2)}`;
-    if ($("#endday-val-cashouts")) $("#endday-val-cashouts").textContent = `-$${cashOuts.toFixed(2)}`;
-    if ($("#endday-val-cash")) $("#endday-val-cash").textContent = `$${cashReceived.toFixed(2)}`;
-    if ($("#endday-val-card")) $("#endday-val-card").textContent = `$${cardReceived.toFixed(2)}`;
-    if ($("#endday-val-received")) $("#endday-val-received").textContent = `$${totalReceived.toFixed(2)}`;
-    if ($("#endday-val-profit")) $("#endday-val-profit").textContent = `$${grossProfit.toFixed(2)}`;
-    if ($("#endday-val-profit-after")) $("#endday-val-profit-after").textContent = `$${profitAfterExpenses.toFixed(2)}`;
-    if ($("#endday-val-total-after")) $("#endday-val-total-after").textContent = `$${totalAfterExpenses.toFixed(2)}`;
-
-    // Populate Tab 2 Documents List (Doc.py)
-    const docsBody = $("#endday-docs-body");
-    if (docsBody) {
-      docsBody.replaceChildren();
-      todayDocs.forEach((doc, idx) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${idx + 1}</td>
-          <td><strong>${doc.doc_barcode || doc.id}</strong></td>
-          <td>${doc.At_Shop_Id || shopName}</td>
-          <td>${doc.customer_id || "-"}</td>
-          <td>${doc.user_id || "admin"}</td>
-          <td>$${(parseFloat(doc.price) || 0).toFixed(2)}</td>
-          <td>${doc.doc_created_date || todayStr}</td>
-        `;
-        docsBody.append(tr);
-      });
-      if (todayDocs.length === 0) {
-        docsBody.innerHTML = `<tr><td colspan="7" class="empty-state">No documents for today at ${shopName}.</td></tr>`;
-      }
-    }
-
-    // Bind Tab Switches inside End Day Dialog
-    $("#endday-tab-total")!.onclick = () => {
-      $("#endday-tab-total")?.classList.add("active");
-      $("#endday-tab-docs")?.classList.remove("active");
-      $("#endday-view-total")?.classList.remove("hidden");
-      $("#endday-view-docs")?.classList.add("hidden");
-    };
-
-    $("#endday-tab-docs")!.onclick = () => {
-      $("#endday-tab-docs")?.classList.add("active");
-      $("#endday-tab-total")?.classList.remove("active");
-      $("#endday-view-docs")?.classList.remove("hidden");
-      $("#endday-view-total")?.classList.add("hidden");
-    };
-
-    $("#close-endday-dialog")!.onclick = () => {
-      dialog.close();
-    };
-
-    $("#btn-endday-refresh")!.onclick = () => {
-      openEndDayDialog(targetShop);
-      showToast("End Day summary refreshed.");
-    };
-
-    $("#btn-endday-print")!.onclick = () => {
-      const printStr = [
-        "END DAY SUMMARY REPORT",
-        `Date: ${todayStr}`,
-        `Shop: ${shopName}`,
-        "----------------------------------------",
-        `Sales Today: $${totalSalesToday.toFixed(2)} (${transCount} transactions)`,
-        `Cash Received: $${cashReceived.toFixed(2)}`,
-        `Card Received: $${cardReceived.toFixed(2)}`,
-        `Total Received: $${totalReceived.toFixed(2)}`,
-        `Expenses: -$${totalExpenses.toFixed(2)}`,
-        `Gross Profit: $${grossProfit.toFixed(2)}`,
-        `Profit After Exp: $${profitAfterExpenses.toFixed(2)}`,
-        `Total After Exp: $${totalAfterExpenses.toFixed(2)}`,
-        "----------------------------------------",
-        "Printed from Hiper Market Web"
-      ].join("\n");
-
-      if ($("#receipt-title")) $("#receipt-title").textContent = `End Day Report - ${shopName}`;
-      if ($("#receipt-content")) $("#receipt-content").textContent = printStr;
-      const receiptDialog = $("#sale-detail-dialog");
-      if (receiptDialog) receiptDialog.showModal();
-    };
-
-    if (typeof dialog.showModal === "function" && !dialog.open) {
-      dialog.showModal();
-    }
-  }
-
-      if ($("#receipt-title")) $("#receipt-title").textContent = "End Day Report";
-      if ($("#receipt-content")) $("#receipt-content").textContent = printStr;
-      const receiptDialog = $("#sale-detail-dialog");
-      if (receiptDialog) receiptDialog.showModal();
-    };
-
-    if (typeof dialog.showModal === "function" && !dialog.open) {
-      dialog.showModal();
-    }
-  }
-
   return {
     populateUserDropdown,
     performDocSearch,
@@ -1301,15 +1322,7 @@ window.HiperDocuments = (() => {
     openDocumentInTopTab,
     closeTopTab,
     switchTopTab,
-    openEndDayDialog,
-    bindDocEvents
-  };
-})();
-    renderNotebookTabs,
-    renderSales,
-    openDocumentInTopTab,
-    closeTopTab,
-    switchTopTab,
+    performEndDay,
     bindDocEvents
   };
 })();

@@ -9,29 +9,15 @@ window.HiperApp = (() => {
 
   async function loadWorkspace() {
     updateAccountUi();
+    await Promise.all([
+      window.HiperHome ? window.HiperHome.loadDashboard() : Promise.resolve(),
+      window.HiperApi.api("list", { query: { resource: "products" } }).then(res => state.products = res.items || []),
+      window.HiperApi.api("list", { query: { resource: "users" } }).then(res => state.users = res.items || []),
+      window.HiperApi.api("list", { query: { resource: "shops" } }).then(res => state.shops = res.items || []),
+      window.HiperApi.api("list", { query: { resource: "sales" } }).then(res => state.sales = res.items || []),
+      window.HiperReports ? window.HiperReports.loadReports() : Promise.resolve()
+    ]);
 
-    // Immediately render Home dashboard so product feed & shop stories show without delay
-    if (window.HiperHome) {
-      window.HiperHome.loadDashboard();
-    }
-
-    try {
-      await Promise.all([
-        window.HiperApi.api("list", { query: { resource: "products" } }).then(res => state.products = res.items || []).catch(() => []),
-        window.HiperApi.api("list", { query: { resource: "users" } }).then(res => state.users = res.items || []).catch(() => []),
-        window.HiperApi.api("list", { query: { resource: "shops" } }).then(res => state.shops = res.items || []).catch(() => []),
-        window.HiperApi.api("list", { query: { resource: "sales" } }).then(res => state.sales = res.items || []).catch(() => []),
-        window.HiperReports ? window.HiperReports.loadReports().catch(() => []) : Promise.resolve()
-      ]);
-    } catch {
-      // Continue with available state
-    }
-
-    if (window.HiperHome) {
-      window.HiperHome.renderShopStories();
-      window.HiperHome.renderProductsFeed();
-      window.HiperHome.updateHeaderCartBadge();
-    }
     if (window.HiperProducts) window.HiperProducts.renderProducts();
     if (window.HiperCustomers) window.HiperCustomers.renderUsers();
     if (window.HiperShops) window.HiperShops.renderShops();
@@ -83,12 +69,9 @@ window.HiperApp = (() => {
     if ($("#page-kicker")) $("#page-kicker").textContent = viewName === "pos" ? "CHECKOUT" : "HIPER MARKET";
     $("#sidebar")?.classList.remove("open");
 
-    // Header Search Bar & Cart Button ONLY for Home View ("overview")
-    const searchBox = $(".topbar-search-box");
-    const cartBtn = $("#header-cart-btn");
-    if (searchBox) searchBox.style.display = (viewName === "overview") ? "block" : "none";
-    if (cartBtn) cartBtn.style.display = (viewName === "overview") ? "inline-flex" : "none";
-
+    if (viewName === "overview" && window.HiperHome) {
+      window.HiperHome.initHomeFeed();
+    }
     if (viewName === "manager" && window.HiperManager) {
       window.HiperManager.switchManagerTab("sales");
     }
@@ -207,13 +190,34 @@ window.HiperApp = (() => {
       $("#select-shop-dialog")?.close();
       openRecordDialog("shops");
     });
-    $("#profile-signout-btn")?.addEventListener("click", () => signOut());
+    $("#profile-signout-btn")?.addEventListener("click", () => {
+      if (state.user) {
+        signOut();
+      } else {
+        showLogin();
+      }
+    });
 
     $("#retry-health")?.addEventListener("click", () => window.HiperApi.checkHealth());
     $("#refresh-data")?.addEventListener("click", refreshWorkspace);
     $("#logout-button")?.addEventListener("click", () => signOut());
     $("#settings-logout")?.addEventListener("click", () => signOut());
-    $("#menu-toggle")?.addEventListener("click", () => $("#sidebar")?.classList.toggle("open"));
+    function toggleSidebar() {
+      const sidebar = $("#sidebar");
+      if (!sidebar) return;
+      sidebar.classList.toggle("collapsed");
+      document.body.classList.toggle("sidebar-collapsed", sidebar.classList.contains("collapsed"));
+      localStorage.setItem("hiper_sidebar_collapsed", sidebar.classList.contains("collapsed") ? "true" : "false");
+    }
+
+    $("#menu-toggle")?.addEventListener("click", toggleSidebar);
+    $("#sidebar-toggle-btn")?.addEventListener("click", toggleSidebar);
+
+    // Restore sidebar collapse state
+    if (localStorage.getItem("hiper_sidebar_collapsed") === "true") {
+      $("#sidebar")?.classList.add("collapsed");
+      document.body.classList.add("sidebar-collapsed");
+    }
     $("#print-receipt")?.addEventListener("click", () => window.print());
 
     if (window.HiperPos) window.HiperPos.bindPosShopEvents();
@@ -227,7 +231,6 @@ window.HiperApp = (() => {
 
   function init() {
     bindEvents();
-    if (window.HiperHome) window.HiperHome.loadDashboard();
     if (window.HiperPos) window.HiperPos.renderCart();
     window.HiperApi.checkHealth();
     restoreSession();

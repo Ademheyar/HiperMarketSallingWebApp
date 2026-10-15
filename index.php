@@ -64,18 +64,17 @@ try {
   <div class="app-shell">
     <!-- SIDEBAR NAVIGATION -->
     <aside class="sidebar" id="sidebar">
-      <a class="brand" href="#" aria-label="Hiper Market home">
-        <span class="brand-mark">H</span>
-        <span><strong>Hiper Market</strong><small>Web Selling Application</small></span>
-      </a>
+      <div class="sidebar-header-row">
+        <button class="icon-button sidebar-toggle-btn" id="sidebar-toggle-btn" title="Toggle Sidebar Mode">☰</button>
+      </div>
 
       <!-- TERMINAL MENU -->
       <div class="nav-section-title">TERMINAL MENU</div>
       <nav class="navigation" aria-label="Terminal navigation">
-        <button class="nav-link active" data-view="overview"><span>🏠</span>Home / Feed</button>
-        <button class="nav-link" data-view="pos"><span>💻</span>POS Terminal</button>
-        <button class="nav-link" data-view="profile"><span>👤</span>User Profile</button>
-        <button class="nav-link" data-view="settings"><span>📱</span>App Preferences</button>
+        <button class="nav-link active" data-view="overview"><span>🏠</span> <span class="nav-text">Home / Feed</span></button>
+        <button class="nav-link" data-view="pos"><span>💻</span> <span class="nav-text">POS Terminal</span></button>
+        <button class="nav-link" data-view="profile"><span>👤</span> <span class="nav-text">User Profile</span></button>
+        <button class="nav-link" data-view="settings"><span>📱</span> <span class="nav-text">App Preferences</span></button>
       </nav>
 
       <div class="sidebar-footer">
@@ -87,42 +86,121 @@ try {
     <main class="main-area">
       <!-- TOP HEADER BAR -->
       <header class="topbar">
-        <button class="icon-button mobile-menu" id="menu-toggle" aria-label="Open navigation">☰</button>
+        <a class="header-logo" href="#" aria-label="Hiper Market home">
+          <span class="brand-mark header-brand-mark">H</span>
+          <span class="header-brand-text"><strong>Hiper Market</strong><small>Web Selling Application</small></span>
+        </a>
 
-        <!-- Header E-Commerce Search Bar -->
-        <div class="topbar-search-box" style="flex: 1; max-width: 480px; margin: 0 12px;">
-          <input class="input header-search-input" id="header-search-input" placeholder="🔍 Search products, shops, marketplace...">
+        <!-- HEADER PRODUCT SEARCH BAR -->
+        <div class="header-search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input class="input header-search-input" id="header-search" placeholder="Search products, shops, brands..." autocomplete="off">
+          <button class="search-clear-btn" id="header-search-clear" aria-label="Clear search" style="display: none;">✕</button>
         </div>
 
         <div class="topbar-right">
-          <button class="button button-primary button-small" id="header-cart-btn" data-open-view="pos">🛒 Cart <span class="count-pill" id="header-cart-badge">0</span></button>
+          <span class="user-name" id="user-name">Not signed in</span>
+          <button class="header-cart-btn" id="header-cart-btn" aria-label="View Cart" title="View Active Cart">
+            <span class="cart-icon">🛒</span>
+            <span class="cart-badge" id="header-cart-badge">0</span>
+          </button>
         </div>
       </header>
 
-      <!-- 1. OVERVIEW / HOME FEED VIEW (Instagram-Style E-Commerce Feed & Sliding Shops) -->
+      <!-- 1. OVERVIEW / HOME FEED VIEW -->
       <section class="view active" id="view-overview">
-        <!-- Top Instagram-style Sliding Shops Row -->
-        <div class="shop-stories-container">
-          <p class="eyebrow margin-bottom-xs" style="margin-bottom: 6px;">POPULAR STORES &amp; SHOPS</p>
-          <div class="shop-stories-slider" id="home-shop-stories">
-            <!-- Populated dynamically e.g. [Main Shop] [Flag Squer] [Fashion Hub] -->
-          </div>
-        </div>
+        <div class="home-layout">
+          <!-- INSTAGRAM PRODUCT FEED -->
+          <div class="insta-feed-container">
 
-        <!-- Instagram-Style Products Feed Posts -->
-        <div class="ecommerce-feed-container margin-top-md">
-          <div class="feed-header-toolbar">
-            <h2>Marketplace Feed</h2>
-            <div class="feed-filters">
-              <button class="feed-filter-btn active" data-filter="all">All Products</button>
-              <button class="feed-filter-btn" data-filter="popular">Popular</button>
-              <button class="feed-filter-btn" data-filter="new">New Arrival</button>
+            <!-- INSTAGRAM SHOP STORIES / STATUS BAR -->
+            <div class="stories-wrapper" id="stories-wrapper">
+              <div class="stories-container" id="home-stories">
+                <!-- Dynamically populated Instagram shop story circles -->
+              </div>
+            </div>
+
+            <div class="insta-feed" id="home-feed">
+              <!-- Instagram-style product post cards populated dynamically -->
+            </div>
+            <div class="feed-loader" id="feed-loader">
+              <div class="feed-spinner"></div>
+              <span>Loading more products...</span>
             </div>
           </div>
 
-          <div class="instagram-posts-grid" id="home-products-feed">
-            <p class="empty-state">Loading marketplace catalog...</p>
+          <!-- HOME ACTIVE CART DRAWER / PANEL -->
+          <aside class="home-cart-panel" id="home-cart-drawer">
+            <div class="home-cart-header">
+              <div class="home-cart-title">
+                <span>🛒</span>
+                <h3>Active Cart</h3>
+                <span class="count-pill" id="home-cart-count">0</span>
+              </div>
+              <button class="home-cart-close-btn" id="close-home-cart" aria-label="Close cart">✕</button>
+            </div>
+
+            <div class="home-cart-items" id="home-cart-items">
+              <p class="empty-state">Your active cart is empty.</p>
+            </div>
+
+            <div class="home-cart-footer">
+              <div class="home-cart-summary">
+                <div><span>Subtotal</span><strong id="home-cart-subtotal">$0.00</strong></div>
+                <div class="grand-total"><span>Total</span><strong id="home-cart-total">$0.00</strong></div>
+              </div>
+              <div class="home-cart-actions">
+                <button class="button button-primary full-width" id="home-cart-checkout">💳 Complete Sale &amp; Checkout</button>
+                <button class="button button-secondary full-width" id="home-cart-clear">Clear Cart</button>
+              </div>
+              <p class="form-message" id="home-cart-message" role="status"></p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- DEDICATED SHOP PAGE VIEW (#view-shoppage) -->
+      <section class="view" id="view-shoppage">
+        <div class="panel shop-profile-banner" id="shoppage-banner">
+          <div class="shop-banner-header">
+            <button class="button button-secondary button-small" id="shoppage-back-btn">← Back to Feed</button>
           </div>
+          <div class="shop-banner-main">
+            <div class="story-ring-large" style="width: 76px; height: 76px; flex-shrink: 0;">
+              <div class="story-avatar-lg" id="shoppage-avatar" style="font-size: 26px;">HM</div>
+            </div>
+            <div class="shop-banner-meta">
+              <div class="shop-name-row">
+                <h2 id="shoppage-name" style="margin:0; font-size: 22px;">Main Shop</h2>
+                <span class="verified-badge">✓ Verified Store</span>
+              </div>
+              <p id="shoppage-brand" style="margin: 4px 0 0; color: var(--accent); font-weight: 700; font-size: 13px;">BELLEMA FASHION</p>
+              <p id="shoppage-location" class="muted" style="margin: 2px 0 0; font-size: 12px;">📍 Bole, Addis Ababa · Ethiopia</p>
+            </div>
+            <button class="btn-follow not-following" id="shoppage-follow-btn" style="margin-left: auto;">Follow</button>
+          </div>
+        </div>
+
+        <!-- Shop Categorized Section Tabs -->
+        <div class="shoppage-tabs-bar margin-top-md">
+          <button class="shoppage-tab active" data-shop-tab="for-you">🎯 For You</button>
+          <button class="shoppage-tab" data-shop-tab="new-arrivals">✨ New Arrivals</button>
+          <button class="shoppage-tab" data-shop-tab="sales">🔥 Shop Sales</button>
+          <button class="shoppage-tab" data-shop-tab="categories">📂 Categories</button>
+        </div>
+
+        <!-- Categories Filter Pills Bar -->
+        <div class="shoppage-categories-bar margin-top-sm" id="shoppage-categories-bar">
+          <button class="cat-pill active" data-cat="all">All Items</button>
+          <button class="cat-pill" data-cat="pos">POS &amp; Scanner</button>
+          <button class="cat-pill" data-cat="clothing">Apparel &amp; Fashion</button>
+          <button class="cat-pill" data-cat="shoes">Shoes &amp; Accessories</button>
+          <button class="cat-pill" data-cat="general">Tech &amp; Supplies</button>
+        </div>
+
+        <!-- Shop Products Grid -->
+        <div class="shoppage-grid margin-top-md" id="shoppage-products-grid">
+          <!-- Dynamically rendered products for this shop -->
         </div>
       </section>
 
@@ -133,7 +211,7 @@ try {
           <div class="toolbar-actions pos-action-bar">
             <button class="button button-secondary" id="pos-calc-btn">🧮 Calcu (F1)</button>
             <button class="button button-secondary" id="pos-none-item-btn">📦 None (F2)</button>
-            <button class="button button-secondary" id="pos-endday-btn">⚡ End Day</button>
+            <button class="button button-secondary" id="pos-activities-btn">⚡ Perform End Day (F6)</button>
             <button class="button button-primary" id="pos-payment-btn">💳 Payment (F10)</button>
             <button class="button button-secondary" id="pos-drawer-btn">💵 Cash Drawer</button>
             <button class="button button-secondary" id="clear-cart">Clear Cart</button>
@@ -275,7 +353,8 @@ try {
             <div id="main-docs-container">
               <!-- Filter Form Grid (Doc.py / DocumentsScreen.kt) -->
               <article class="doc-filter-panel">
-                <div class="doc-filter-grid">
+                <!-- Row 1 Filters -->
+                <div class="doc-filter-row">
                   <label class="doc-filter-field"><span>Document ID:</span><input id="filter-doc-id" placeholder=""></label>
                   <label class="doc-filter-field"><span>Document Type:</span><input id="filter-doc-type" placeholder=""></label>
                   <label class="doc-filter-field"><span>Document Barcode:</span><input id="filter-doc-barcode" placeholder=""></label>
@@ -283,14 +362,15 @@ try {
                   <label class="doc-filter-field"><span>Item:</span><input id="filter-item" placeholder=""></label>
                   <label class="doc-filter-field"><span>Sold Item Info:</span><input id="filter-sold-item" placeholder=""></label>
                   <label class="doc-filter-field"><span>Discount:</span><input id="filter-discount" placeholder=""></label>
-                  <label class="doc-filter-field"><span>User ID:</span><select id="filter-user-id"><option value=""></option></select></label>
-                  <label class="doc-filter-field"><span>At Shop:</span><select id="filter-at-shop"><option value=""></option></select></label>
-                  <label class="doc-filter-field"><span>Customer ID:</span><select id="filter-customer-id"><option value=""></option></select></label>
-                  <label class="doc-filter-field"><span>Seller ID:</span><select id="filter-seller-id"><option value=""></option></select></label>
                 </div>
 
-                <!-- Date Filters Row -->
-                <div class="doc-filter-grid margin-top-xs">
+                <!-- Row 2 Filters -->
+                <div class="doc-filter-row">
+                  <label class="doc-filter-field"><span>User ID:</span><select id="filter-user-id"><option value=""></option></select></label>
+                  <label class="doc-filter-field"><span>At Shop:</span><select id="filter-at-shop"><option value="">Main Shop</option><option value="All Shops">All Shops</option></select></label>
+                  <label class="doc-filter-field"><span>Customer ID:</span><select id="filter-customer-id"><option value=""></option></select></label>
+                  <label class="doc-filter-field"><span>Seller ID:</span><select id="filter-seller-id"><option value=""></option></select></label>
+
                   <div class="doc-checkbox-group">
                     <input type="checkbox" id="chk-created-date" checked>
                     <label for="chk-created-date">Created Date</label>
@@ -445,21 +525,6 @@ try {
             <!-- CONTAINER FOR OPEN DOCUMENT EDITORS (docediterform.py) -->
             <div id="open-doc-editors-container"></div>
           </div>
-
-                <div class="table-scroll margin-top-sm">
-                  <table>
-                    <thead>
-                      <tr><th>Item Name</th><th>Quantity</th><th>Price</th><th>Subtotal</th><th>Action</th></tr>
-                    </thead>
-                    <tbody id="edit-doc-items-body"></tbody>
-                  </table>
-                </div>
-              </div>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             <!-- Sub-Frame 2: Products -->
             <div class="mgr-subframe hidden" id="mgr-subframe-products">
@@ -716,147 +781,86 @@ try {
     </main>
   </div>
 
-  <!-- PRODUCT DETAIL & VARIANT SELECTION MODAL -->
-  <dialog class="dialog" id="product-detail-dialog" style="width: min(720px, calc(100% - 24px)); max-height: min(92vh, 850px);">
-    <div class="dialog-card" style="padding: 20px;">
-      <div class="dialog-heading" style="margin-bottom: 12px;">
-        <div>
-          <p class="eyebrow" id="pdetail-shop-name">VERIFIED MERCHANT</p>
-          <h2 id="pdetail-title">Product Details</h2>
+  <!-- PERFORM END DAY RECONCILIATION MODAL (Matching Doc.py perform_endday) -->
+  <dialog class="dialog end-day-dialog" id="end-day-dialog">
+    <div class="dialog-card end-day-card">
+      <div class="dialog-heading">
+        <div class="dialog-brand">
+          <span class="brand-mark" style="background: linear-gradient(135deg, #16a34a, #15803d);">⚡</span>
+          <div>
+            <p class="eyebrow" style="color: #22c55e;">DAY CLOSING RECONCILIATION</p>
+            <h2>End Day Confirmation</h2>
+          </div>
         </div>
-        <button class="icon-button" type="button" id="close-pdetail-dialog" aria-label="Close">×</button>
+        <button class="icon-button" type="button" id="close-end-day-btn" aria-label="Close">×</button>
       </div>
 
-      <div class="product-detail-layout" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px;">
-        <!-- Left Column: Image Gallery -->
-        <div class="product-gallery-box">
-          <div class="main-gallery-image" id="pdetail-main-img-box" style="width: 100%; height: 240px; background: #08111e; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
-            <div id="pdetail-img-display" style="font-size: 72px;">📦</div>
-            <span class="post-price-badge" id="pdetail-price-badge" style="font-size: 16px; top: 12px; right: 12px;">$0.00</span>
-          </div>
-          <!-- Image Thumbnails -->
-          <div class="gallery-thumbs-row" id="pdetail-thumbs-row" style="display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 4px;"></div>
+      <!-- Modal Tabs Row -->
+      <div class="sub-tabs-row margin-top-sm">
+        <button class="sub-tab active" id="endday-tab-summary">📊 Total Summary</button>
+        <button class="sub-tab" id="endday-tab-docs">📄 Reconciled Documents</button>
+      </div>
+
+      <!-- Tab 1: Total Financial Reconciliation Summary -->
+      <div id="endday-view-summary" class="endday-view-content">
+        <div class="endday-date-badge" id="endday-date-badge">
+          📅 <span id="endday-date-str">DATE: 2026-04-20</span>
         </div>
 
-        <!-- Right Column: Product Options & Add to Cart -->
-        <div class="product-info-box" style="display: flex; flex-direction: column; gap: 12px;">
-          <p class="muted" id="pdetail-desc" style="font-size: 13px; line-height: 1.5; margin: 0;"></p>
-
-          <!-- Color Selection -->
-          <div class="option-section">
-            <span class="field-label" style="font-weight: 700;">Select Color: <strong id="selected-color-name" style="color: var(--accent);">Default</strong></span>
-            <div class="options-pills-row" id="pdetail-colors-row" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;"></div>
+        <div class="endday-summary-box">
+          <!-- Expenses & Outs Section -->
+          <div class="endday-section">
+            <div class="endday-row danger"><span class="endday-label">Expenses:</span><strong id="endday-exp-val">$0.00</strong></div>
+            <div class="endday-row danger"><span class="endday-label">Cash Outs:</span><strong id="endday-outs-val">$0.00</strong></div>
+            <div class="endday-divider"></div>
+            <div class="endday-row danger-sub"><span class="endday-label">Total Outflows:</span><strong id="endday-subouts-val">-$0.00</strong></div>
           </div>
 
-          <!-- Size Selection -->
-          <div class="option-section">
-            <span class="field-label" style="font-weight: 700;">Select Size: <strong id="selected-size-name" style="color: var(--accent);">Standard</strong></span>
-            <div class="options-pills-row" id="pdetail-sizes-row" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;"></div>
+          <!-- Payments Section -->
+          <div class="endday-section margin-top-sm">
+            <div class="endday-row"><span class="endday-label">Cash Paid:</span><strong id="endday-cash-val">$0.00</strong></div>
+            <div class="endday-row"><span class="endday-label">Card Paid:</span><strong id="endday-card-val">$0.00</strong></div>
+            <div class="endday-divider"></div>
+            <div class="endday-row success-sub"><span class="endday-label">Total Paid:</span><strong id="endday-paid-val">$0.00</strong></div>
           </div>
 
-          <!-- Quantity & Price Calculator -->
-          <div class="form-grid compact margin-top-xs" style="align-items: center;">
-            <label class="field">
-              <span>Quantity</span>
-              <span style="display: flex; align-items: center; gap: 6px;">
-                <button class="button button-secondary button-small" type="button" id="btn-qty-minus" style="width: 32px; font-weight: 900;">-</button>
-                <input class="input" id="pdetail-qty-input" type="number" min="1" value="1" style="text-align: center; font-weight: 800; width: 60px;">
-                <button class="button button-secondary button-small" type="button" id="btn-qty-plus" style="width: 32px; font-weight: 900;">+</button>
-              </span>
-            </label>
-            <div class="field" style="text-align: right;">
-              <span>Total Price</span>
-              <strong id="pdetail-calc-total" style="font-size: 22px; color: var(--success);">$0.00</strong>
+          <!-- Profits & Reconciled Totals Section -->
+          <div class="endday-section margin-top-sm">
+            <div class="endday-row"><span class="endday-label">Gross Profit:</span><strong id="endday-profit-val">$0.00</strong></div>
+            <div class="endday-row highlight-row">
+              <span class="endday-label">Profit After Expenses:</span><strong id="endday-profit-after-exp-val">$0.00</strong>
+            </div>
+            <div class="endday-row highlight-row">
+              <span class="endday-label">Total After Expenses:</span><strong id="endday-total-after-exp-val">$0.00</strong>
+            </div>
+            <div class="endday-row"><span class="endday-label">Inventory Stock Value:</span><strong id="endday-stock-val">$0.00</strong></div>
+            <div class="endday-row grand-row">
+              <span class="endday-label">Final Reconciled Total:</span><strong id="endday-total-after-stock-val">$0.00</strong>
             </div>
           </div>
-
-          <div style="display: flex; gap: 10px; margin-top: 6px;">
-            <button class="button button-primary full-width" id="btn-pdetail-add-cart" style="font-size: 13px;">🛍️ Add to Cart</button>
-            <button class="button button-secondary full-width" id="btn-pdetail-buy-now" style="font-size: 13px;">⚡ Buy Now</button>
-          </div>
         </div>
       </div>
 
-      <!-- More Product Suggestions Section -->
-      <div class="margin-top-md" style="border-top: 1px solid var(--line); padding-top: 14px;">
-        <h4 style="margin-bottom: 10px;">More Product Suggestions</h4>
-        <div id="pdetail-suggestions-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; max-height: 180px; overflow-y: auto;"></div>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- END DAY CONFIRMATION DIALOG (Doc.py perform_endday) -->
-  <dialog class="dialog" id="end-day-dialog" style="width: min(680px, calc(100% - 24px));">
-    <div class="dialog-card" style="padding: 20px;">
-      <div class="dialog-heading">
-        <div>
-          <p class="eyebrow">DAILY RECONCILIATION &amp; SUMMARY</p>
-          <h2>⚡ End Day Confirmation</h2>
-        </div>
-        <button class="icon-button" type="button" id="close-endday-dialog" aria-label="Close">×</button>
-      </div>
-
-      <!-- End Day Notebook Tabs (Doc.py: Total & Documents) -->
-      <div class="sub-tabs-row margin-top-sm">
-        <button class="sub-tab active" id="endday-tab-total">📊 Summary &amp; Metrics</button>
-        <button class="sub-tab" id="endday-tab-docs">📄 Today's Documents</button>
-      </div>
-
-      <!-- Tab 1: Total Summary & Styled Metric Cards (Moved from Home) -->
-      <div id="endday-view-total">
-        <div class="summary-header-card margin-top-sm" id="endday-date-label">DATE : TODAY</div>
-
-        <!-- Metric Cards Grid moved from Home (Sales Today, Total Products, Low Stock, Active Shops) -->
-        <div class="metric-grid margin-top-sm" style="grid-template-columns: repeat(2, 1fr); gap: 10px;">
-          <article class="metric-card"><span class="metric-label">Sales Today</span><strong id="endday-metric-sales">$0.00</strong><small id="endday-metric-count">0 transactions</small></article>
-          <article class="metric-card"><span class="metric-label">Total Products</span><strong id="endday-metric-products">0</strong><small>In inventory</small></article>
-          <article class="metric-card"><span class="metric-label">Low Stock Alert</span><strong id="endday-metric-stock">0</strong><small>At or below 5 units</small></article>
-          <article class="metric-card"><span class="metric-label">Active Shops</span><strong id="endday-metric-shops">1</strong><small>Store locations</small></article>
-        </div>
-
-        <!-- Doc.py Detailed Financial Breakdown List -->
-        <div class="panel margin-top-md" style="background: #08111e; padding: 14px; font-size: 13px; line-height: 1.8;">
-          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 6px;">
-            <span>Expenses:</span><strong style="color: var(--danger);" id="endday-val-expenses">-$0.00</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
-            <span>Cash Outs:</span><strong style="color: var(--danger);" id="endday-val-cashouts">-$0.00</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
-            <span>Cash Received:</span><strong id="endday-val-cash">$0.00</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
-            <span>Card Received:</span><strong id="endday-val-card">$0.00</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
-            <span>Total Received:</span><strong style="color: var(--success);" id="endday-val-received">$0.00</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
-            <span>Gross Profit:</span><strong id="endday-val-profit">$0.00</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-top: 6px; padding-bottom: 6px;">
-            <span>Profit After Expenses:</span><strong style="color: #4dd0e1;" id="endday-val-profit-after">$0.00</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; padding-top: 6px;">
-            <span>Total After Expenses:</span><strong style="color: var(--success); font-size: 16px;" id="endday-val-total-after">$0.00</strong>
-          </div>
-        </div>
-
-        <div class="dialog-actions margin-top-md" style="justify-content: space-between;">
-          <button class="button button-secondary" id="btn-endday-refresh">🔄 Refresh</button>
-          <button class="button button-primary" id="btn-endday-print">🖨️ Print Report Slip</button>
-        </div>
-      </div>
-
-      <!-- Tab 2: Today's Documents List -->
-      <div class="hidden" id="endday-view-docs">
-        <div class="table-scroll margin-top-sm" style="max-height: 350px;">
+      <!-- Tab 2: Included Documents Table -->
+      <div id="endday-view-docs" class="endday-view-content hidden">
+        <div class="table-scroll" style="max-height: 280px;">
           <table>
             <thead>
-              <tr><th>No.</th><th>Document</th><th>Shop</th><th>Customer</th><th>User</th><th>Paid</th><th>Date</th></tr>
+              <tr>
+                <th>No.</th><th>Barcode</th><th>Shop</th><th>Customer</th><th>User</th><th>Paid</th><th>Date</th>
+              </tr>
             </thead>
             <tbody id="endday-docs-body"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="dialog-actions margin-top-md" style="justify-content: space-between;">
+        <button class="button button-secondary" type="button" id="endday-refresh-btn">🔄 Refresh Data</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="button button-primary" type="button" id="endday-print-btn">🖨️ Print End Day Slip</button>
+          <button class="button button-secondary" type="button" id="endday-close-btn">Close</button>
         </div>
       </div>
     </div>

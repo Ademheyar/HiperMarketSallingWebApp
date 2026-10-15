@@ -7,7 +7,8 @@ window.HiperApi = (() => {
   const state = {
     token: sessionStorage.getItem("hiper-token") || "",
     user: null,
-    health: null
+    health: null,
+    cart: []
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);

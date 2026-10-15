@@ -39,13 +39,12 @@ window.HiperAuth = (() => {
     sessionStorage.removeItem("hiper-token");
     updateAccountUi();
     if (showNotice) showToast("You have signed out.");
-    showLogin();
   }
 
   function updateAccountUi() {
     const userName = state.user?.User_name || "Not signed in";
-    const userRole = state.user?.User_type || "Admin";
-    const fullName = [state.user?.User_fname, state.user?.User_Lname].filter(Boolean).join(" ") || "System Admin";
+    const userRole = state.user?.User_type || "Guest";
+    const fullName = [state.user?.User_fname, state.user?.User_Lname].filter(Boolean).join(" ") || "Guest User";
     const activeShopObj = state.activeShop || (state.shops?.[0] || null);
     const shopName = activeShopObj?.Shop_name || activeShopObj?.name || state.user?.User_shop || (state.shops?.[0]?.Shop_name || "Main Shop");
 
@@ -55,13 +54,24 @@ window.HiperAuth = (() => {
     if ($("#user-avatar")) $("#user-avatar").textContent = userName.slice(0, 1).toUpperCase() || "?";
 
     if ($("#topbar-shop-name")) $("#topbar-shop-name").textContent = shopName;
-    if ($("#prof-handle")) $("#prof-handle").textContent = "@" + (state.user?.User_name || "admin");
+    if ($("#prof-handle")) $("#prof-handle").textContent = "@" + (state.user?.User_name || "guest");
     if ($("#prof-full-name")) $("#prof-full-name").textContent = fullName;
     if ($("#prof-role")) $("#prof-role").textContent = userRole;
     if ($("#prof-shop")) $("#prof-shop").textContent = shopName;
-    if ($("#prof-email")) $("#prof-email").textContent = state.user?.User_email || "admin@hipermarket.com";
+    if ($("#prof-email")) $("#prof-email").textContent = state.user?.User_email || "guest@hipermarket.com";
     if ($("#prof-location")) $("#prof-location").textContent = state.user?.User_country || "Ethiopia";
-    if ($("#prof-avatar")) $("#prof-avatar").textContent = userName.slice(0, 1).toUpperCase() || "A";
+    if ($("#prof-avatar")) $("#prof-avatar").textContent = userName.slice(0, 1).toUpperCase() || "G";
+
+    const signoutBtn = $("#profile-signout-btn");
+    if (signoutBtn) {
+      if (state.user) {
+        signoutBtn.textContent = "Sign Out / Log Out";
+        signoutBtn.className = "button button-danger full-width margin-top-sm";
+      } else {
+        signoutBtn.textContent = "🔑 Security Sign In / Log In";
+        signoutBtn.className = "button button-primary full-width margin-top-sm";
+      }
+    }
 
     $("#open-login-btn")?.classList.toggle("hidden", !!state.user);
     $("#logout-button")?.classList.toggle("hidden", !state.user);
@@ -84,7 +94,6 @@ window.HiperAuth = (() => {
   async function restoreSession() {
     if (!state.token) {
       updateAccountUi();
-      if (window.HiperApp) window.HiperApp.loadWorkspace();
       return;
     }
     try {
@@ -96,7 +105,7 @@ window.HiperAuth = (() => {
       state.token = "";
       sessionStorage.removeItem("hiper-token");
       updateAccountUi();
-      if (window.HiperApp) window.HiperApp.loadWorkspace();
+      showToast("Session expired. Please sign in again.", true);
     }
   }
 
@@ -201,9 +210,9 @@ window.HiperAuth = (() => {
     btnGroup.style.marginTop = "10px";
 
     if (level > 0) {
-      // Level > 0: ⚙️ Manage button + ⚡ End Day button + 🏬 Select button
+      // Level > 0: ⚙️ Manage button on the left + ⚡ End Day button + 🏬 Select button
       const btnManage = document.createElement("button");
-      btnManage.className = "button button-primary button-small";
+      btnManage.className = "button button-secondary button-small";
       btnManage.textContent = "⚙️ Manage";
       btnManage.type = "button";
       btnManage.addEventListener("click", () => {
@@ -212,18 +221,18 @@ window.HiperAuth = (() => {
       });
 
       const btnEndDay = document.createElement("button");
-      btnEndDay.className = "button button-secondary button-small";
+      btnEndDay.className = "button button-primary button-small";
       btnEndDay.textContent = "⚡ End Day";
       btnEndDay.type = "button";
       btnEndDay.addEventListener("click", () => {
         selectActiveShop(shop);
-        if (window.HiperDocuments && window.HiperDocuments.openEndDayDialog) {
-          window.HiperDocuments.openEndDayDialog(shop);
+        if (window.HiperDocuments && typeof window.HiperDocuments.performEndDay === "function") {
+          window.HiperDocuments.performEndDay(true);
         }
       });
 
       const btnSelect = document.createElement("button");
-      btnSelect.className = "button button-secondary button-small";
+      btnSelect.className = "button button-quiet button-small";
       btnSelect.textContent = "🏬 Select";
       btnSelect.type = "button";
       btnSelect.addEventListener("click", () => {

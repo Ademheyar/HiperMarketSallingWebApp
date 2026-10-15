@@ -284,40 +284,15 @@ function handle_py_api(array $input): void
     // Software Version & Update Handler
     if (in_array(strtolower($do), ['check update', 'check_update', 'update'], true)) {
         $currentVersion = trim((string)($input['version'] ?? '1.0.0'));
+        $latestVersion = '1.0.1'; // Server latest release version
 
-        // Determine latest version available on server (from config or scan update zip files)
-        $latestVersion = app_config()['latest_version'] ?? '1.0.1';
-        $zipFiles = glob(__DIR__ . '/updates/update_v*.zip');
-        if ($zipFiles !== false && count($zipFiles) > 0) {
-            $foundVersions = [];
-            foreach ($zipFiles as $filePath) {
-                if (preg_match('/update_v([0-9]+\.[0-9]+\.[0-9]+)\.zip$/i', $filePath, $matches)) {
-                    $foundVersions[] = $matches[1];
-                }
-            }
-            if (!empty($foundVersions)) {
-                usort($foundVersions, 'version_compare');
-                $latestVersion = end($foundVersions);
-            }
-        }
-
-        $zipFileName = 'update_v' . $latestVersion . '.zip';
-        $zipFilePath = __DIR__ . '/updates/' . $zipFileName;
-
-        $hasZipFile = file_exists($zipFilePath);
-        $isNewerVersion = version_compare($currentVersion, $latestVersion, '<');
-
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'hipermarket0.xo.je';
-        $downloadUrl = $scheme . '://' . $host . '/API/updates/' . $zipFileName;
-
-        if ($hasZipFile && $isNewerVersion) {
+        if (version_compare($currentVersion, $latestVersion, '<')) {
             app_json_response([
                 'status' => 'success',
                 'has_update' => true,
                 'latest_version' => $latestVersion,
                 'changelog' => 'Performance optimizations, security fixes, and new features.',
-                'download_url' => $downloadUrl
+                'download_url' => 'https://hipermarket0.xo.je/API/updates/update_v' . $latestVersion . '.zip'
             ]);
         } else {
             app_json_response([
@@ -820,6 +795,9 @@ try {
     if ($action === 'list') {
         $resource = (string)($_GET['resource'] ?? '');
         $search = trim((string)($_GET['q'] ?? ''));
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : null;
+        $limit = isset($_GET['limit']) ? max(1, min(100, (int)$_GET['limit'])) : null;
+
         $limits = [
             'products' => ['product', 'name', 'id'],
             'users' => ['Users', 'User_name', 'User_id'],
@@ -835,16 +813,37 @@ try {
         try {
             $rows = $search === ''
                 ? fetch_all('SELECT * FROM ' . quote_identifier($table) . ' ORDER BY ' . quote_identifier($searchField) . ' DESC LIMIT 300')
-                : fetch_all('SELECT * FROM ' . quote_identifier($table) . ' WHERE CAST(' . quote_identifier($searchField) . ' AS TEXT) LIKE ? ORDER BY ' . quote_identifier($searchField) . ' DESC LIMIT 300', ['%' . $search . '%']);
+                : fetch_all('SELECT * FROM ' . quote_identifier($table) . ' WHERE CAST(' . quote_identifier($searchField) . ' AS TEXT) LIKE ? OR CAST(at_shop AS TEXT) LIKE ? ORDER BY ' . quote_identifier($searchField) . ' DESC LIMIT 300', ['%' . $search . '%', '%' . $search . '%']);
         } catch (\Throwable $e) {
             $rows = [];
         }
         if ($resource === 'products' && empty($rows)) {
-            $rows = [
-                ['id' => 1, 'name' => 'Wireless POS Scanner', 'code' => 'SCN-01', 'barcode' => '1001', 'at_shop' => 'Main Shop', 'quantity' => 25, 'price' => 120.0, 'cost' => 75.0, 'service' => ''],
-                ['id' => 2, 'name' => 'Thermal Receipt Printer 80mm', 'code' => 'PRN-80', 'barcode' => '1002', 'at_shop' => 'Main Shop', 'quantity' => 15, 'price' => 250.0, 'cost' => 160.0, 'service' => ''],
-                ['id' => 3, 'name' => 'Cash Drawer Heavy Duty', 'code' => 'DRW-01', 'barcode' => '1003', 'at_shop' => 'Main Shop', 'quantity' => 10, 'price' => 85.0, 'cost' => 50.0, 'service' => '']
+            $allMockProducts = [
+                ['id' => 1, 'name' => 'Wireless POS Scanner', 'code' => 'SCN-01', 'barcode' => '1001', 'at_shop' => 'Main Shop', 'Shop_location' => 'Bole, Addis Ababa', 'quantity' => 25, 'price' => 120.0, 'cost' => 75.0, 'service' => '', 'description' => 'Fast 2.4G wireless barcode scanner with auto-scan stand.'],
+                ['id' => 2, 'name' => 'Thermal Receipt Printer 80mm', 'code' => 'PRN-80', 'barcode' => '1002', 'at_shop' => 'Main Shop', 'Shop_location' => 'Bole, Addis Ababa', 'quantity' => 15, 'price' => 250.0, 'cost' => 160.0, 'service' => '', 'description' => 'High speed thermal printer with auto cutter USB + LAN.'],
+                ['id' => 3, 'name' => 'Cash Drawer Heavy Duty', 'code' => 'DRW-01', 'barcode' => '1003', 'at_shop' => 'Main Shop', 'Shop_location' => 'Bole, Addis Ababa', 'quantity' => 10, 'price' => 85.0, 'cost' => 50.0, 'service' => '', 'description' => '5 bill 8 coin removable cash tray with RJ11 interface.'],
+                ['id' => 4, 'name' => 'Designer Leather Jacket', 'code' => 'LJK-2026', 'barcode' => '1004', 'at_shop' => 'BELLEMA FASHION', 'Shop_location' => 'Bole Medhanealem', 'quantity' => 8, 'price' => 340.0, 'cost' => 200.0, 'service' => '', 'description' => '100% Genuine Italian leather jacket with inner viscose lining.'],
+                ['id' => 5, 'name' => 'Premium Cotton T-Shirt', 'code' => 'TSH-002', 'barcode' => '1005', 'at_shop' => 'BELLEMA FASHION', 'Shop_location' => 'Bole Medhanealem', 'quantity' => 50, 'price' => 45.0, 'cost' => 20.0, 'service' => '', 'description' => 'Heavyweight 240 GSM organic cotton relaxed fit t-shirt.'],
+                ['id' => 6, 'name' => 'High-Top Sneakers', 'code' => 'SNK-88', 'barcode' => '1006', 'at_shop' => 'A.Dot', 'Shop_location' => 'Flag Square, Addis', 'quantity' => 18, 'price' => 130.0, 'cost' => 70.0, 'service' => '', 'description' => 'Streetwear high-top canvas sneakers with cushioned sole.'],
+                ['id' => 7, 'name' => 'Smart Touchscreen POS Terminal', 'code' => 'POS-X1', 'barcode' => '1007', 'at_shop' => 'Hiper Tech Store', 'Shop_location' => 'Kazanchis Tech Hub', 'quantity' => 5, 'price' => 599.0, 'cost' => 420.0, 'service' => '', 'description' => 'All-in-one Android POS terminal with dual screen display.'],
+                ['id' => 8, 'name' => 'Wireless Ergonomic Mouse', 'code' => 'MS-202', 'barcode' => '1008', 'at_shop' => 'Hiper Tech Store', 'Shop_location' => 'Kazanchis Tech Hub', 'quantity' => 32, 'price' => 35.0, 'cost' => 15.0, 'service' => '', 'description' => 'Silent click 2.4GHz rechargeable ergonomic vertical mouse.'],
+                ['id' => 9, 'name' => 'Silk Evening Dress', 'code' => 'DR-09', 'barcode' => '1009', 'at_shop' => 'BELLEMA FASHION', 'Shop_location' => 'Bole Medhanealem', 'quantity' => 6, 'price' => 280.0, 'cost' => 150.0, 'service' => '', 'description' => 'Elegant silk floor-length evening dress with subtle sheen.'],
+                ['id' => 10, 'name' => 'Ergonomic Executive Office Chair', 'code' => 'CHR-05', 'barcode' => '1010', 'at_shop' => 'Supermarket Central', 'Shop_location' => '4 Kilo Square', 'quantity' => 12, 'price' => 210.0, 'cost' => 120.0, 'service' => '', 'description' => 'Breathable mesh back executive office chair with lumbar support.'],
+                ['id' => 11, 'name' => 'Organic Espresso Beans 1kg', 'code' => 'COF-01', 'barcode' => '1011', 'at_shop' => 'Supermarket Central', 'Shop_location' => '4 Kilo Square', 'quantity' => 40, 'price' => 28.0, 'cost' => 14.0, 'service' => '', 'description' => 'Freshly roasted Yirgacheffe Arabica whole coffee beans.'],
+                ['id' => 12, 'name' => 'Bluetooth ANC Headphones', 'code' => 'BTH-10', 'barcode' => '1012', 'at_shop' => 'Hiper Tech Store', 'Shop_location' => 'Kazanchis Tech Hub', 'quantity' => 14, 'price' => 115.0, 'cost' => 65.0, 'service' => '', 'description' => 'Active noise-cancelling wireless over-ear headphones.'],
             ];
+
+            if ($search !== '') {
+                $s = strtolower($search);
+                $rows = array_filter($allMockProducts, function ($item) use ($s) {
+                    return str_contains(strtolower($item['name']), $s) ||
+                           str_contains(strtolower($item['at_shop']), $s) ||
+                           str_contains(strtolower($item['code']), $s);
+                });
+                $rows = array_values($rows);
+            } else {
+                $rows = $allMockProducts;
+            }
         }
         if ($resource === 'users' && empty($rows)) {
             $rows = [
@@ -854,12 +853,30 @@ try {
         if ($resource === 'shops' && empty($rows)) {
             $rows = [
                 ['Shop_Id' => 1, 'Shop_name' => 'Main Shop', 'Shop_brand_name' => 'BELLEMA FASHION', 'Shop_location' => 'Bole, Addis Ababa', 'Shop_country' => 'Ethiopia'],
-                ['Shop_Id' => 2, 'Shop_name' => 'Flag Squer', 'Shop_brand_name' => 'A.Dot', 'Shop_location' => 'Addis Ababa', 'Shop_country' => 'Ethiopia']
+                ['Shop_Id' => 2, 'Shop_name' => 'Flag Squer', 'Shop_brand_name' => 'A.Dot', 'Shop_location' => 'Addis Ababa', 'Shop_country' => 'Ethiopia'],
+                ['Shop_Id' => 3, 'Shop_name' => 'Hiper Tech Store', 'Shop_brand_name' => 'Hiper Tech', 'Shop_location' => 'Kazanchis Tech Hub', 'Shop_country' => 'Ethiopia'],
+                ['Shop_Id' => 4, 'Shop_name' => 'Supermarket Central', 'Shop_brand_name' => 'Central Market', 'Shop_location' => '4 Kilo Square', 'Shop_country' => 'Ethiopia']
             ];
         }
         if ($resource === 'users') {
             $rows = array_map('safe_user', $rows);
         }
+
+        $total = count($rows);
+        if ($page !== null && $limit !== null) {
+            $offset = ($page - 1) * $limit;
+            $sliced = array_slice($rows, $offset, $limit);
+            $hasMore = ($offset + $limit) < $total;
+            app_json_response([
+                'ok' => true,
+                'items' => $sliced,
+                'total' => $total,
+                'page' => $page,
+                'limit' => $limit,
+                'has_more' => $hasMore
+            ]);
+        }
+
         app_json_response(['ok' => true, 'items' => $rows]);
     }
     if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {

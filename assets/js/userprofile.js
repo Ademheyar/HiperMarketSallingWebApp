@@ -263,9 +263,9 @@ window.HiperUserProfile = (() => {
           window.HiperAuth.renderShopActionButtons(shop, rightSide, true);
         } else {
           const btnManage = document.createElement("button");
-          btnManage.className = "button button-secondary button-small";
+          btnManage.className = "button button-secondary";
           btnManage.style.fontWeight = "700";
-          btnManage.textContent = "✔ Manage";
+          btnManage.textContent = "⚙️ Manage";
           btnManage.type = "button";
           btnManage.addEventListener("click", () => {
             if (window.HiperAuth) window.HiperAuth.selectActiveShop(shop);
@@ -273,14 +273,14 @@ window.HiperUserProfile = (() => {
           });
 
           const btnEndDay = document.createElement("button");
-          btnEndDay.className = "button button-secondary button-small";
+          btnEndDay.className = "button button-primary";
           btnEndDay.style.fontWeight = "700";
           btnEndDay.textContent = "⚡ End Day";
           btnEndDay.type = "button";
           btnEndDay.addEventListener("click", () => {
             if (window.HiperAuth) window.HiperAuth.selectActiveShop(shop);
-            if (window.HiperDocuments && window.HiperDocuments.openEndDayDialog) {
-              window.HiperDocuments.openEndDayDialog(shop);
+            if (window.HiperDocuments && typeof window.HiperDocuments.performEndDay === "function") {
+              window.HiperDocuments.performEndDay(true);
             }
           });
 
@@ -296,8 +296,12 @@ window.HiperUserProfile = (() => {
   }
 
   function bindProfileEvents() {
-    $("#prof-manage-btn")?.addEventListener("click", () => {
-      if (window.HiperApp) window.HiperApp.navigate("manager");
+    $("#prof-end-day-btn")?.addEventListener("click", () => {
+      if (window.HiperDocuments && typeof window.HiperDocuments.performEndDay === "function") {
+        window.HiperDocuments.performEndDay(true);
+      } else {
+        if (window.HiperApi) window.HiperApi.showToast("End Day module is loading...", true);
+      }
     });
 
     $("#ptab-messages")?.addEventListener("click", () => {

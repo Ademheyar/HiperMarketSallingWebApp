@@ -33,6 +33,14 @@ window.HiperPos = (() => {
     select.value = activeName;
   }
 
+  function triggerPosEndDay() {
+    if (window.HiperDocuments && typeof window.HiperDocuments.performEndDay === "function") {
+      window.HiperDocuments.performEndDay(true);
+    } else {
+      if (window.HiperApi) window.HiperApi.showToast("End Day module loading...", true);
+    }
+  }
+
   function bindPosShopEvents() {
     $("#sale-shop")?.addEventListener("change", (e) => {
       const selectedName = e.target.value;
@@ -43,9 +51,33 @@ window.HiperPos = (() => {
       }
     });
 
-    $("#pos-endday-btn")?.addEventListener("click", () => {
-      if (window.HiperDocuments && window.HiperDocuments.openEndDayDialog) {
-        window.HiperDocuments.openEndDayDialog();
+    $("#pos-activities-btn")?.addEventListener("click", triggerPosEndDay);
+    $("#pos-payment-btn")?.addEventListener("click", completeSale);
+    $("#pos-calc-btn")?.addEventListener("click", () => $("#pos-search")?.focus());
+    $("#pos-none-item-btn")?.addEventListener("click", () => {
+      state.cart = [];
+      renderCart();
+      if (window.HiperHome) window.HiperHome.renderHomeCart();
+    });
+
+    // POS Keyboard Shortcuts (F1, F2, F6, F10)
+    window.addEventListener("keydown", (e) => {
+      if (state.activeView !== "pos") return;
+
+      if (e.key === "F6") {
+        e.preventDefault();
+        triggerPosEndDay();
+      } else if (e.key === "F10") {
+        e.preventDefault();
+        completeSale();
+      } else if (e.key === "F1") {
+        e.preventDefault();
+        $("#pos-search")?.focus();
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        state.cart = [];
+        renderCart();
+        if (window.HiperHome) window.HiperHome.renderHomeCart();
       }
     });
   }
@@ -88,6 +120,7 @@ window.HiperPos = (() => {
   }
 
   function addToCart(product) {
+    if (!Array.isArray(state.cart)) state.cart = [];
     const existing = state.cart.find((line) => String(line.product.id) === String(product.id));
     if (existing) {
       existing.quantity += 1;
@@ -95,9 +128,7 @@ window.HiperPos = (() => {
       state.cart.push({ product, quantity: 1, price: Number(product.price) || 0 });
     }
     renderCart();
-    if (window.HiperHome && window.HiperHome.updateHeaderCartBadge) {
-      window.HiperHome.updateHeaderCartBadge();
-    }
+    if (window.HiperHome && window.HiperHome.renderHomeCart) window.HiperHome.renderHomeCart();
   }
 
   function cartTotal() {
