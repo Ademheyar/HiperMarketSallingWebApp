@@ -61,6 +61,7 @@ window.HiperApp = (() => {
     if (!targetView) return;
 
     state.activeView = viewName;
+    document.body.classList.toggle("pos-mode", viewName === "pos");
     $$(".view").forEach((view) => view.classList.toggle("active", view.id === `view-${viewName}`));
     $$(".nav-link").forEach((button) => button.classList.toggle("active", button.dataset.view === viewName));
 
@@ -181,8 +182,8 @@ window.HiperApp = (() => {
     $("#record-form")?.addEventListener("submit", saveRecord);
 
     $("#pos-search")?.addEventListener("input", (event) => window.HiperPos && window.HiperPos.renderProductSearch(event.target.value));
-    $("#complete-sale")?.addEventListener("click", () => window.HiperPos && window.HiperPos.completeSale());
-    $("#clear-cart")?.addEventListener("click", () => { state.cart = []; window.HiperPos && window.HiperPos.renderCart(); });
+    $("#complete-sale")?.addEventListener("click", () => window.HiperPos && window.HiperPos.openPaymentDialog());
+    $("#clear-cart")?.addEventListener("click", () => window.HiperPos && window.HiperPos.clearCart());
 
     $("#open-login-btn")?.addEventListener("click", showLogin);
     $("#topbar-shop-name")?.addEventListener("click", () => window.HiperAuth && window.HiperAuth.showShopSelector());

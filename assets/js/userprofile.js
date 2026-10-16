@@ -77,7 +77,13 @@ window.HiperUserProfile = (() => {
       if (window.HiperApp) window.HiperApp.openRecordDialog("shops");
     });
 
-    actionBtns.append(btnRequestShop, btnCreateShop);
+    const btnUpgrade = document.createElement("button");
+    btnUpgrade.className = "button button-primary";
+    btnUpgrade.textContent = "Upgrade";
+    btnUpgrade.type = "button";
+    btnUpgrade.addEventListener("click", openUpgradeDialog);
+
+    actionBtns.append(btnRequestShop, btnCreateShop, btnUpgrade);
     controlPanel.append(leftHeading, actionBtns);
     content.append(controlPanel);
 
@@ -293,6 +299,105 @@ window.HiperUserProfile = (() => {
 
       content.append(listContainer);
     }
+  }
+
+  function openUpgradeDialog() {
+    let dialog = $("#profile-upgrade-dialog");
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.id = "profile-upgrade-dialog";
+      dialog.className = "dialog profile-upgrade-dialog";
+      dialog.innerHTML = `
+        <form method="dialog" class="upgrade-dialog-form">
+          <div class="dialog-heading"><div><p class="eyebrow">HIPERMARKET PLANS</p><h2>Upgrade your business</h2></div><button class="icon-button" type="submit" aria-label="Close">×</button></div>
+          <div class="upgrade-step-indicator"><span class="active">1 <small>Plan</small></span><i></i><span>2 <small>Payment</small></span><i></i><span>3 <small>Details</small></span></div>
+          <div class="upgrade-viewport"><div class="upgrade-track">
+            <section class="upgrade-step" aria-label="Choose a plan">
+              <p class="muted">Choose a plan. Subscription prices need to be configured by the store administrator.</p>
+              <div class="upgrade-plan-grid" role="group" aria-label="Subscription plan">
+                <button class="upgrade-plan" type="button" data-plan="starter"><strong>Starter</strong><span class="upgrade-price">Pricing to be set</span><small>For a single growing shop</small></button>
+                <button class="upgrade-plan selected" type="button" data-plan="business"><strong>Business</strong><span class="upgrade-price">Pricing to be set</span><small>For teams and daily operations</small></button>
+                <button class="upgrade-plan" type="button" data-plan="growth"><strong>Growth</strong><span class="upgrade-price">Pricing to be set</span><small>For multiple shops and larger teams</small></button>
+              </div>
+            </section>
+            <section class="upgrade-step" aria-label="Choose payment method">
+              <p class="muted">Select how you want to pay.</p>
+              <div class="upgrade-method-grid" role="group" aria-label="Payment method">
+                <button class="upgrade-method selected" type="button" data-method="paypal"><span class="upgrade-method-icon">P</span><span><strong>PayPal</strong><small>Continue with your PayPal account</small></span><b>✓</b></button>
+                <button class="upgrade-method" type="button" data-method="card"><span class="upgrade-method-icon">▤</span><span><strong>Credit or debit card</strong><small>Visa, Mastercard and supported cards</small></span><b>✓</b></button>
+              </div>
+            </section>
+            <section class="upgrade-step" aria-label="Billing details">
+              <p class="muted" data-details-intro>Enter the billing information for your selected payment method.</p>
+              <div class="form-grid compact">
+                <label class="field card-only" hidden><span>Billing name</span><input class="input" name="billing_name" autocomplete="name"></label>
+                <label class="field"><span data-email-label>PayPal account email</span><input class="input" name="billing_email" type="email" autocomplete="email" value="${String(state.user?.User_email || "").replace(/[&<>"']/g, "")}" required></label>
+                <label class="field card-only" hidden><span>Billing country</span><input class="input" name="billing_country" autocomplete="country-name" value="${String(state.user?.User_country || "").replace(/[&<>"']/g, "")}"></label>
+                <label class="field card-only" hidden><span>Postal / ZIP code</span><input class="input" name="billing_postal" autocomplete="postal-code"></label>
+              </div>
+              <p class="upgrade-secure-note">Card number and security code are entered on the payment provider’s secure checkout page. This app does not collect or store card details.</p>
+              <p class="upgrade-checkout-message form-message" role="status"></p>
+            </section>
+          </div></div>
+          <div class="dialog-actions upgrade-navigation"><button class="button button-secondary" type="submit">Cancel</button><button class="button button-secondary" type="button" data-upgrade-back hidden>Back</button><button class="button button-primary" type="button" data-upgrade-next>Next</button></div>
+        </form>`;
+      document.body.append(dialog);
+      let selectedPlan = dialog.querySelector(".upgrade-plan.selected");
+      let selectedMethod = dialog.querySelector(".upgrade-method.selected");
+      let currentStep = 0;
+      const stepLabels = [...dialog.querySelectorAll(".upgrade-step-indicator span")];
+      const updateWizard = () => {
+        dialog.querySelector(".upgrade-track").style.transform = `translateX(-${currentStep * 33.3333}%)`;
+        dialog.dataset.step = String(currentStep);
+        stepLabels.forEach((label, index) => label.classList.toggle("active", index === currentStep));
+        dialog.querySelector("[data-upgrade-back]").hidden = currentStep === 0;
+        dialog.querySelector("[data-upgrade-next]").textContent = currentStep === 2 ? "Continue to payment" : "Next";
+      };
+      dialog.querySelectorAll(".upgrade-plan").forEach(button => button.addEventListener("click", () => {
+        selectedPlan?.classList.remove("selected");
+        selectedPlan = button;
+        button.classList.add("selected");
+        dialog.dataset.plan = button.dataset.plan;
+      }));
+      dialog.querySelectorAll(".upgrade-method").forEach(button => button.addEventListener("click", () => {
+        selectedMethod?.classList.remove("selected");
+        selectedMethod = button;
+        button.classList.add("selected");
+        dialog.dataset.method = button.dataset.method;
+        const cardSelected = button.dataset.method === "card";
+        dialog.querySelectorAll(".card-only").forEach(field => {
+          field.hidden = !cardSelected;
+          const input = field.querySelector("input");
+          input.required = cardSelected;
+        });
+        dialog.querySelector("[data-email-label]").textContent = cardSelected ? "Receipt email" : "PayPal account email";
+        dialog.querySelector("[data-details-intro]").textContent = cardSelected
+          ? "Add your billing address. You’ll enter card details securely with the payment provider."
+          : "Enter the email linked to your PayPal account.";
+      }));
+      dialog.dataset.plan = selectedPlan?.dataset.plan || "business";
+      dialog.dataset.method = selectedMethod?.dataset.method || "paypal";
+      dialog.querySelector("[data-upgrade-back]").addEventListener("click", () => {
+        currentStep = Math.max(0, currentStep - 1);
+        updateWizard();
+      });
+      dialog.querySelector("[data-upgrade-next]").addEventListener("click", () => {
+        if (currentStep < 2) {
+          currentStep += 1;
+          updateWizard();
+          return;
+        }
+        const form = dialog.querySelector("form");
+        const message = dialog.querySelector(".upgrade-checkout-message");
+        const email = form.elements.billing_email;
+        if (!email.reportValidity()) return;
+        if (dialog.dataset.method === "card" && ![form.elements.billing_name, form.elements.billing_country, form.elements.billing_postal].every(input => input.reportValidity())) return;
+        message.textContent = "Secure checkout is not available yet: a payment gateway is not configured for this store. No payment has been taken. Contact your administrator to connect PayPal or a card processor.";
+        message.classList.add("error");
+      });
+      updateWizard();
+    }
+    dialog.showModal();
   }
 
   function bindProfileEvents() {

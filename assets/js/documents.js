@@ -735,56 +735,242 @@ window.HiperDocuments = (() => {
     chartBox.append(svg);
   }
 
+  function parseReportDate(value) {
+    const parts = String(value || "").split(/[ _T]/)[0].match(/\d+/g) || [];
+    if (parts.length >= 3) {
+      const yearFirst = parts[0].length === 4;
+      const rawYear = String(yearFirst ? parts[0] : parts[2]);
+      let year = Number(rawYear);
+      if (rawYear.length === 2) {
+        const cutoff = new Date().getFullYear() % 100;
+        year = year <= cutoff ? 2000 + year : 1900 + year;
+      }
+      const month = Number(parts[1]);
+      const day = Number(yearFirst ? parts[2] : parts[0]);
+      if (year && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const date = new Date(Date.UTC(year, month - 1, day));
+        if (date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day) return date;
+      }
+    } else if (parts.length === 2) {
+      const yearFirst = parts[0].length === 4;
+      const year = Number(yearFirst ? parts[0] : parts[1]);
+      const month = Number(yearFirst ? parts[1] : parts[0]);
+      if (year && month >= 1 && month <= 12) return new Date(Date.UTC(year, month - 1, 1));
+    }
+    return null;
+  }
+
+  function addReportMonths(date, count) {
+    const targetMonth = date.getUTCMonth() + count;
+    const targetYear = date.getUTCFullYear() + Math.floor(targetMonth / 12);
+    const month = ((targetMonth % 12) + 12) % 12;
+    const day = Math.min(date.getUTCDate(), new Date(Date.UTC(targetYear, month + 1, 0)).getUTCDate());
+    return new Date(Date.UTC(targetYear, month, day));
+  }
+
+  function addReportYears(date, count) {
+    const year = date.getUTCFullYear() + count;
+    const month = date.getUTCMonth();
+    return new Date(Date.UTC(year, month, Math.min(date.getUTCDate(), new Date(Date.UTC(year, month + 1, 0)).getUTCDate())));
+  }
+
+  function parseShopExpenses(shop) {
+    try {
+      const raw = typeof shop.Shop_Expenses === "string" ? JSON.parse(shop.Shop_Expenses) : shop.Shop_Expenses;
+      return Array.isArray(raw) ? raw : [];
+    } catch { return []; }
+  }
+
+  // Shop_Expenses rows: [name, description, amount, category, start date, ref, notes, frequency, repeats, interval, end date].
+  function calculateShopExpenses(shops, fromValue, toValue) {
+    const rangeStart = parseReportDate(fromValue) || new Date(Date.UTC(1970, 0, 1));
+    const rangeEnd = parseReportDate(toValue) || new Date(Date.UTC(9999, 11, 31));
+    const dayMs = 86400000;
+    let total = 0;
+    (shops || []).forEach(shop => parseShopExpenses(shop).forEach(expense => {
+      if (!Array.isArray(expense)) return;
+      const amount = Number(String(expense[2] ?? 0).replace(/[^\d.\-]/g, "")) || 0;
+      const startDate = parseReportDate(expense[4]);
+      const endDate = parseReportDate(expense[10]);
+      if (!startDate || amount === 0) return;
+      const frequency = String(expense[7] || "").toLowerCase();
+      const interval = Math.max(1, parseInt(expense[9], 10) || 1);
+      const activeStart = new Date(Math.max(startDate.getTime(), rangeStart.getTime()));
+      const activeEnd = new Date(Math.min(endDate?.getTime() ?? rangeEnd.getTime(), rangeEnd.getTime()));
+      if (activeStart > activeEnd) return;
+      const repeatValue = String(expense[8] ?? "").trim().toLowerCase();
+      const repeats = ["1", "true", "yes"].includes(repeatValue) ||
+        (!repeatValue && !endDate && ["day", "week", "month", "year"].some(unit => frequency.includes(unit)));
+      if (!repeats) {
+        if (startDate >= rangeStart && startDate <= rangeEnd) total += amount;
+        return;
+      }
+      const unit = ["day", "week", "month", "year"].find(value => frequency.includes(value));
+      if (!unit) {
+        if (startDate >= activeStart && startDate <= activeEnd) total += amount;
+        return;
+      }
+      let occurrence = new Date(startDate);
+      const nextOccurrence = date => {
+        if (unit === "day") return new Date(date.getTime() + interval * dayMs);
+        if (unit === "week") return new Date(date.getTime() + interval * 7 * dayMs);
+        if (unit === "month") return addReportMonths(date, interval);
+        return addReportYears(date, interval);
+      };
+      const periodEnd = date => {
+        const next = nextOccurrence(date);
+        return new Date(next.getTime() - dayMs);
+      };
+      if (["day", "week"].includes(unit) && occurrence < activeStart) {
+        const stepDays = interval * (unit === "week" ? 7 : 1);
+        const skips = Math.max(0, Math.floor((activeStart.getTime() - occurrence.getTime()) / (stepDays * dayMs)));
+        occurrence = new Date(occurrence.getTime() + skips * stepDays * dayMs);
+      } else if (unit === "month" || unit === "year") {
+        let guard = 0;
+        while (periodEnd(occurrence) < activeStart && guard++ < 12000) occurrence = nextOccurrence(occurrence);
+      }
+      let guard = 0;
+      while (occurrence <= activeEnd && guard++ < 20000) {
+        const periodEndDate = periodEnd(occurrence);
+        const overlapStart = Math.max(occurrence.getTime(), activeStart.getTime());
+        const overlapEnd = Math.min(periodEndDate.getTime(), activeEnd.getTime());
+        if (overlapStart <= overlapEnd) {
+          const periodDays = Math.max(1, Math.round((periodEndDate.getTime() - occurrence.getTime()) / dayMs) + 1);
+          const overlapDays = Math.round((overlapEnd - overlapStart) / dayMs) + 1;
+          total += amount * overlapDays / periodDays;
+        }
+        occurrence = nextOccurrence(occurrence);
+      }
+    }));
+    return round2(total);
+  }
+
+  function parsePaymentRows(doc) {
+    let raw = doc.payments;
+    if (typeof raw === "string") {
+      try { raw = JSON.parse(raw); } catch { raw = null; }
+    }
+    if (Array.isArray(raw) && raw.length) {
+      if (Array.isArray(raw[0]) || (raw[0] && typeof raw[0] === "object")) return raw;
+      return [raw];
+    }
+    if (raw && typeof raw === "object") return [raw];
+    const legacyMethod = doc.payment_method || (typeof doc.payments === "string" && !/^\s*[\[{]/.test(doc.payments) ? doc.payments : "Cash");
+    return [{ type: legacyMethod, method: legacyMethod, amount: doc.pid ?? doc.price, date: doc.doc_created_date, paid: true }];
+  }
+
+  function paymentToolName(payment, shops) {
+    if (payment.method) return String(payment.method);
+    const code = String(payment.type || "");
+    for (const shop of shops || []) {
+      try {
+        const raw = typeof shop.Shop_Payment_Tools === "string" ? JSON.parse(shop.Shop_Payment_Tools) : shop.Shop_Payment_Tools;
+        for (const tool of Array.isArray(raw) ? raw : []) {
+          if (Array.isArray(tool) && String(tool[0]) === code) return String(tool[1] || "OTHER");
+          if (tool && typeof tool === "object" && String(tool.id ?? tool.code ?? tool.type ?? "") === code) return String(tool.name ?? tool.label ?? "OTHER");
+        }
+      } catch {}
+    }
+    return code || "OTHER";
+  }
+
+  // doc.py payment rows: [id, pay type, amount, date, updated, user, is paid, ..., payment tool].
+  function calculatePaymentTotals(docsList, shops, fromValue = "", toValue = "") {
+    const totals = { cash: 0, card: 0, paid: 0, unpaid: 0, cashOut: 0, cardOut: 0, cashStock: 0, cardStock: 0, creditStock: 0, methods: new Map() };
+    const from = parseReportDate(fromValue);
+    const to = parseReportDate(toValue);
+    (docsList || []).forEach(doc => parsePaymentRows(doc).forEach(row => {
+      let type, method, amount, date, paidFlag;
+      if (Array.isArray(row)) {
+        if (row.length >= 7) {
+          type = row[1]; amount = row[2]; date = row[3]; paidFlag = row[6]; method = row.length > 8 ? row[8] : "";
+        } else if (row.length >= 4) {
+          type = row[0]; amount = row[1]; paidFlag = row[2]; method = row[3];
+        } else {
+          type = row[0]; method = row[0]; amount = row[2] ?? row[1];
+          paidFlag = String(row[1] ?? "paid").toLowerCase() !== "unpaid";
+        }
+      } else {
+        type = row.type ?? row.pay_type ?? row.code;
+        method = row.method ?? row.payment_method ?? row.tool;
+        amount = row.amount ?? row.value ?? row.paid;
+        date = row.date ?? row.payment_date;
+        paidFlag = row.is_paid ?? row.paid_flag ?? row.paid;
+      }
+      const paymentDate = parseReportDate(date || doc.doc_created_date);
+      if ((from && paymentDate && paymentDate < from) || (to && paymentDate && paymentDate > to)) return;
+      const value = Number(amount) || 0;
+      const tool = paymentToolName({ type, method }, shops);
+      const label = tool.toUpperCase();
+      const flag = String(paidFlag ?? "1").trim().toLowerCase();
+      const unpaid = ["0", "false", "no", "unpaid"].includes(flag) || label.includes("UNPAID") || String(type || "").toUpperCase().includes("UNPAID");
+      if (unpaid) { totals.unpaid += Math.abs(value); return; }
+      if (label.includes("CASHOUT") || label.includes("CARDOUT") || flag === "-1") {
+        if (label.includes("CARD")) totals.cardOut += Math.abs(value); else totals.cashOut += Math.abs(value);
+        return;
+      }
+      if (label.includes("CASHSTOCK")) { totals.cashStock += Math.abs(value); return; }
+      if (label.includes("CARDSTOCK")) { totals.cardStock += Math.abs(value); return; }
+      if (label.includes("CREDITSTOCK")) { totals.creditStock += Math.abs(value); return; }
+      if (label.includes("CREDIT") || label.includes("CREADIT")) { totals.unpaid += Math.abs(value); return; }
+      totals.paid += value;
+      if (label.includes("CASHIN") || label.includes("CASH")) totals.cash += value;
+      else if (label.includes("CARD") || label.includes("VISA") || label.includes("MASTERCARD")) totals.card += value;
+      totals.methods.set(tool, (totals.methods.get(tool) || 0) + value);
+    }));
+    Object.keys(totals).forEach(key => { if (typeof totals[key] === "number") totals[key] = round2(totals[key]); });
+    return totals;
+  }
+
+  function renderPaymentToolTotals(methodTotals) {
+    const container = $("#rep-payment-tools");
+    if (!container) return;
+    container.replaceChildren();
+    const entries = [...methodTotals.entries()].sort((a, b) => b[1] - a[1]);
+    if (!entries.length) {
+      container.textContent = "No paid payment tools in this date range.";
+      return;
+    }
+    entries.forEach(([name, amount]) => {
+      const line = document.createElement("div");
+      const label = document.createElement("span");
+      const value = document.createElement("strong");
+      label.textContent = name;
+      value.textContent = "$" + amount.toFixed(2);
+      line.append(label, value);
+      container.append(line);
+    });
+  }
+
   // --- REPORT FINANCIAL METRICS (Doc.py home_tab) ---
   function calculateFinancialMetrics(docsList) {
-    let cashPaid = 0;
-    let cardPaid = 0;
-    let cardIn = 0;
-    let totalPaid = 0;
-    let cashOuts = 0;
-    let cardOuts = 0;
+    const dateFrom = $("#filter-date-from")?.value || "";
+    const dateTo = $("#filter-date-to")?.value || dateFrom;
+    const paymentTotals = calculatePaymentTotals(docsList, state.shops, dateFrom, dateTo);
+    const cashPaid = paymentTotals.cash;
+    const cardPaid = paymentTotals.card;
+    const cardIn = 0;
+    const totalPaid = paymentTotals.paid;
+    const cashOuts = paymentTotals.cashOut;
+    const cardOuts = paymentTotals.cardOut;
     let totalProfit = 0;
-    let unpaid = 0;
+    const unpaid = paymentTotals.unpaid;
     let totalGross = 0;
 
     docsList.forEach(doc => {
       const price = parseFloat(doc.price) || 0;
-      const pid = parseFloat(doc.pid) || price;
       const profit = parseFloat(doc.Profite) || (price * 0.35);
-      const payType = String(doc.payments || "Cash").toLowerCase();
-
       totalGross += price;
-      totalPaid += pid;
       totalProfit += profit;
-
-      if (payType.includes("card")) {
-        cardPaid += pid;
-      } else {
-        cashPaid += pid;
-      }
-
-      if (pid < price) {
-        unpaid += (price - pid);
-      }
     });
 
-    // Expenses calculated from active shops
-    let expenses = 0;
-    (state.shops || []).forEach(sh => {
-      try {
-        const exList = typeof sh.Shop_Expenses === "string" ? JSON.parse(sh.Shop_Expenses) : (sh.Shop_Expenses || []);
-        exList.forEach(ex => {
-          expenses += (parseFloat(ex[2] || ex.amount) || 0);
-        });
-      } catch {
-        // Skip
-      }
-    });
+    const expenses = calculateShopExpenses(state.shops, dateFrom, dateTo);
+    renderPaymentToolTotals(paymentTotals.methods);
 
     const totalOut = cashOuts + cardOuts + expenses;
-    const cashStock = Math.max(0, cashPaid - cashOuts - expenses);
-    const cardStock = Math.max(0, cardPaid - cardOuts);
-    const creditStock = unpaid;
+    const cashStock = paymentTotals.cashStock;
+    const cardStock = paymentTotals.cardStock;
+    const creditStock = paymentTotals.creditStock || unpaid;
     const totalStock = cashStock + cardStock + creditStock;
     const profitAfterOuts = totalProfit - totalOut;
     const paidAfterOuts = totalPaid - totalOut;
@@ -1033,53 +1219,30 @@ window.HiperDocuments = (() => {
         return docDate >= dateFrom && docDate <= dateTo;
       });
 
-      let totalCashPaid = 0;
-      let totalCardPaid = 0;
-      let totalPaid = 0;
+      const paymentTotals = calculatePaymentTotals(state.sales, state.shops, dateFrom, dateTo);
+      const totalCashPaid = paymentTotals.cash;
+      const totalCardPaid = paymentTotals.card;
+      // Doc.py's End Day reconciliation starts with the Cash + Card paid figures.
+      const totalPaid = round2(totalCashPaid + totalCardPaid);
       let totalProfit = 0;
-      let cashOuts = 0;
-      let cardOuts = 0;
+      const cashOuts = paymentTotals.cashOut;
+      const cardOuts = paymentTotals.cardOut;
 
       activeDocs.forEach(doc => {
         const price = parseFloat(doc.price) || 0;
-        const pid = parseFloat(doc.pid || doc.paid) || price;
-        const payType = String(doc.payments || doc.payment_method || "").toLowerCase();
-
-        totalPaid += pid;
-        totalProfit += (price * 0.35);
-
-        if (payType.includes("out") || doc.doc_type === "out") {
-          if (payType.includes("card")) cardOuts += Math.abs(price);
-          else cashOuts += Math.abs(price);
-        } else if (payType.includes("card")) {
-          totalCardPaid += pid;
-        } else {
-          totalCashPaid += pid;
-        }
+        totalProfit += parseFloat(doc.Profite) || (price * 0.35);
       });
 
-      // Calculate shop expenses
-      let expenses = 0;
-      (state.shops || []).forEach(sh => {
-        try {
-          const exList = typeof sh.Shop_Expenses === "string" ? JSON.parse(sh.Shop_Expenses) : (sh.Shop_Expenses || []);
-          exList.forEach(ex => {
-            expenses += (parseFloat(ex[2] || ex.amount) || 0);
-          });
-        } catch {}
-      });
+      const expenses = calculateShopExpenses(state.shops, dateFrom, dateTo);
 
       const totalOuts = cashOuts + cardOuts + expenses;
       const profitAfterExp = round2(totalProfit - totalOuts);
-      const totalAfterExp = round2(totalPaid - totalOuts);
+      const totalAfterExp = round2(totalCashPaid + totalCardPaid - totalOuts);
 
-      // Calculate inventory stock value
-      let stockValue = 0;
-      (state.products || []).forEach(p => {
-        stockValue += (parseFloat(p.price) || 0) * (parseFloat(p.quantity) || 0);
-      });
-
-      const totalAfterStock = round2(totalAfterExp - stockValue);
+      // Doc.py's stock is the sum of the CASHSTOCK, CARDSTOCK and CREDITSTOCK
+      // payment-tool balances, not the retail value of product quantities.
+      const stockValue = round2(paymentTotals.cashStock + paymentTotals.cardStock + paymentTotals.creditStock);
+      const totalAfterStock = round2(totalCashPaid + totalCardPaid - totalOuts - stockValue);
 
       // Format Date Range String
       const dateStr = dateFrom === dateTo ? `DATE: ${dateFrom}` : `FROM DATE: ${dateFrom} TO ${dateTo}`;
@@ -1149,7 +1312,7 @@ window.HiperDocuments = (() => {
         `Gross Profit          : $${round2(totalProfit).toFixed(2)}`,
         `Profit After Exp      : $${profitAfterExp.toFixed(2)}`,
         `Total After Exp       : $${totalAfterExp.toFixed(2)}`,
-        `Inventory Stock       : $${round2(stockValue).toFixed(2)}`,
+        `Stock                 : $${stockValue.toFixed(2)}`,
         `Total After Stock     : $${totalAfterStock.toFixed(2)}`,
         "========================================",
         `Reconciled Documents : ${activeDocs.length} items`,

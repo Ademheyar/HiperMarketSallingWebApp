@@ -2,7 +2,9 @@
  * getvalue.css - Keypad Calculator Modal (#keypad-dialog / GetValueDialog)
  */
 .keypad-display { text-align: right; font-size: 22px; font-weight: 800; letter-spacing: .05em; margin-bottom: 14px; color: var(--success); }
-.keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.keypad-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
 .keypad-btn { min-height: 48px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-raised); font-size: 18px; font-weight: 800; cursor: pointer; }
 .keypad-btn:hover { background: var(--accent); color: #fff; }
 .keypad-btn.danger { background: rgb(226 59 78 / 20%); color: var(--danger); }
+.keypad-btn.keypad-operator { color: var(--accent); background: rgb(37 99 235 / 12%); }
+.keypad-btn.keypad-equals { grid-column: 1 / -1; }

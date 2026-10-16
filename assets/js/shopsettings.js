@@ -10,9 +10,40 @@ window.HiperShopSettings = (() => {
     const body = $("#expenses-body");
     if (!body) return;
     body.replaceChildren();
-    for (const e of state.expenses) {
+    let count = 0;
+    (state.shops || []).forEach(shop => {
+      let entries = shop.Shop_Expenses || [];
+      try { if (typeof entries === "string") entries = JSON.parse(entries); } catch { entries = []; }
+      if (!Array.isArray(entries)) return;
+      entries.forEach((expense, index) => {
+        if (!Array.isArray(expense)) return;
+        const row = document.createElement("tr");
+        const values = [
+          `${shop.Shop_Id || shop.Shop_id || "shop"}-${index + 1}`,
+          expense[0] || "Expense",
+          `$${(Number(String(expense[2] || 0).replace(/[^\d.\-]/g, "")) || 0).toFixed(2)}`,
+          expense[3] || "Other",
+          expense[4] || "",
+          expense[5] || "",
+          expense[1] || "",
+          shop.Shop_name || shop.Shop_brand_name || "Shop"
+        ];
+        values.forEach(value => {
+          const cell = document.createElement("td");
+          cell.textContent = String(value);
+          row.append(cell);
+        });
+        body.append(row);
+        count += 1;
+      });
+    });
+    if (!count) {
       const row = document.createElement("tr");
-      row.innerHTML = `<td>${e.id}</td><td>${e.title}</td><td>$${e.amount.toFixed(2)}</td><td>${e.category}</td><td>${e.date}</td><td>${e.ref}</td><td>${e.description}</td>`;
+      const cell = document.createElement("td");
+      cell.colSpan = 8;
+      cell.className = "empty-state";
+      cell.textContent = "No expenses found in this shop's Shop_Expenses records.";
+      row.append(cell);
       body.append(row);
     }
   }

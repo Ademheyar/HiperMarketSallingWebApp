@@ -21,6 +21,7 @@ window.HiperHome = (() => {
   let activeShopPageTab = "for-you";
   let activeShopCategory = "all";
   let currentShopObj = null;
+  let currentProduct = null;
 
   // Local persistent preferences
   const followedShops = new Set(JSON.parse(localStorage.getItem("hiper_followed_shops") || "[]"));
@@ -293,6 +294,212 @@ window.HiperHome = (() => {
     }
   }
 
+  function productImage(product) {
+    const raw = product.images || product.image_urls || product.image_url || product.image || product.photo || product.image_path || [];
+    const fromColumns = Array.isArray(raw) ? raw.filter(Boolean) : typeof raw === "string" ? (() => {
+      try { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) return parsed.filter(Boolean); } catch {}
+      return raw.split(/[\n,;]/).map(value => value.trim()).filter(Boolean);
+    })() : [];
+    const fromVariants = getProductVariantInfo(product).variants.map(variant => variant.image).filter(value => value && value.trim());
+    const images = [...new Set([...fromColumns, ...fromVariants])];
+    if (images.length) return images;
+    return [];
+  }
+
+  function optionList(value, fallback = []) {
+    if (Array.isArray(value)) return value.map(String).filter(Boolean);
+    if (typeof value === "string" && value.trim()) {
+      try { const parsed = JSON.parse(value); if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean); } catch {}
+      return value.split(/[,|;]/).map(item => item.trim()).filter(Boolean);
+    }
+    return fallback;
+  }
+
+  function getProductVariantInfo(product) {
+    const raw = product.more_info ?? product.More_info ?? product.moreInfo;
+    let tree = raw;
+    if (typeof raw === "string") {
+      try { tree = JSON.parse(raw); } catch { return { variants: [], shops: [], codes: [], colors: [], sizes: [] }; }
+    }
+    const variants = [];
+    const unique = values => [...new Set(values.filter(Boolean).map(String))];
+    const findLeafValues = (node, path) => {
+      if (!Array.isArray(node)) return;
+      if (node.length >= 4 && node.every(value => value == null || ["string", "number", "boolean"].includes(typeof value))) {
+        variants.push({ shop: path[0] || "", code: path[1] || "", color: path[2] || "", size: path[3] || "", barcode: String(node[0] ?? ""), quantity: Number(node[2]) || 0, image: String(node[4] ?? "") });
+        return;
+      }
+      node.forEach(child => findLeafValues(child, path));
+    };
+    const walk = (node, path = []) => {
+      if (!Array.isArray(node)) return;
+      for (const entry of node) {
+        if (Array.isArray(entry) && entry.length === 2 && typeof entry[0] === "string" && Array.isArray(entry[1])) {
+          const nextPath = [...path, entry[0]];
+          if (nextPath.length >= 4) findLeafValues(entry[1], nextPath);
+          else walk(entry[1], nextPath);
+        } else if (Array.isArray(entry)) {
+          walk(entry, path);
+        }
+      }
+    };
+    walk(tree);
+    return {
+      variants,
+      shops: unique(variants.map(item => item.shop)),
+      codes: unique(variants.map(item => item.code)),
+      colors: unique(variants.map(item => item.color)),
+      sizes: unique(variants.map(item => item.size))
+    };
+  }
+
+  function colorButtonStyle(button, value) {
+    const swatch = button.querySelector(".product-color-swatch");
+    if (!swatch) return;
+    const named = { black: "#111", white: "#fff", red: "#dc2626", blue: "#2563eb", green: "#16a34a", yellow: "#eab308", orange: "#ea580c", purple: "#9333ea", pink: "#ec4899", brown: "#92400e", gray: "#6b7280", grey: "#6b7280", navy: "#1e3a8a", beige: "#d6c5a5", cream: "#fffdd0" };
+    const normalized = String(value).trim().toLowerCase();
+    swatch.style.backgroundColor = named[normalized] || (/^#[0-9a-f]{3,8}$/i.test(normalized) || /^(rgb|hsl)a?\(/i.test(normalized) ? normalized : "#6b7280");
+    if (["white", "yellow", "beige", "cream"].includes(normalized)) swatch.classList.add("light-color");
+  }
+
+  function bindImageGallery(root, images, fallbackIcon) {
+    const image = root.querySelector("img[data-gallery-image]");
+    const count = root.querySelector("[data-gallery-count]");
+    const prev = root.querySelector("[data-gallery-prev]");
+    const next = root.querySelector("[data-gallery-next]");
+    let index = 0;
+    const update = () => {
+      if (image && images.length) image.src = images[index];
+      if (count) count.textContent = `${index + 1} / ${images.length}`;
+      if (prev) prev.hidden = images.length < 2;
+      if (next) next.hidden = images.length < 2;
+    };
+    prev?.addEventListener("click", event => { event.stopPropagation(); index = (index - 1 + images.length) % images.length; update(); });
+    next?.addEventListener("click", event => { event.stopPropagation(); index = (index + 1) % images.length; update(); });
+    if (!images.length) root.querySelector("[data-gallery-fallback]")?.replaceChildren(document.createTextNode(fallbackIcon));
+    update();
+  }
+
+  function openProductPage(product) {
+    if (!product) return;
+    currentProduct = product;
+    if (window.HiperApp) window.HiperApp.navigate("productpage");
+    renderProductPage();
+  }
+
+  function renderProductPage() {
+    const product = currentProduct;
+    const content = $("#product-detail-content");
+    if (!product || !content) return;
+    const variantInfo = getProductVariantInfo(product);
+    const shopInfo = getShopDetails(product.at_shop || variantInfo.shops[0]);
+    const images = productImage(product);
+    const sizesFromMoreInfo = variantInfo.sizes;
+    const colorsFromMoreInfo = variantInfo.colors;
+    const sizes = sizesFromMoreInfo.length ? sizesFromMoreInfo : optionList(product.sizes || product.size_options || product.available_sizes, []);
+    const colors = colorsFromMoreInfo.length ? colorsFromMoreInfo : optionList(product.colors || product.color_options || product.available_colors, []);
+    const delivery = optionList(product.delivery_options || product.delivery_methods, ["Standard delivery", "Store pickup"]);
+    const productKey = String(product.id || product.code || product.name);
+    const savedRating = Number(JSON.parse(localStorage.getItem("hiper_product_ratings") || "{}")[productKey]) || 0;
+    const price = Number(product.price) || 0;
+    const stock = Number(product.quantity) || 0;
+    content.innerHTML = `
+      <div class="product-detail-media product-gallery">${images.length ? `<img data-gallery-image src="" alt="${escapeHtml(product.name)}" onerror="this.hidden=true;this.parentElement.querySelector('[data-gallery-fallback]').hidden=false">` : ""}<span class="product-detail-fallback" data-gallery-fallback ${images.length ? "hidden" : ""}>${getProductIcon(product.name)}</span><button type="button" class="gallery-arrow gallery-prev" data-gallery-prev aria-label="Previous image">‹</button><span class="gallery-count" data-gallery-count></span><button type="button" class="gallery-arrow gallery-next" data-gallery-next aria-label="Next image">›</button></div>
+      <div class="product-detail-info">
+        <p class="eyebrow">${escapeHtml(shopInfo.fullBrandLabel)}</p>
+        <h1>${escapeHtml(product.name || "Product")}</h1>
+        <p class="product-detail-price">$${price.toFixed(2)}</p>
+        <p>${escapeHtml(product.description || "No product description is available.")}</p>
+        <div class="product-detail-facts">
+          <span id="product-detail-stock">${stock} in stock</span>${variantInfo.shops.length ? `<span>Shops: ${escapeHtml(variantInfo.shops.map(shop => getShopDetails(shop).displayName).join(", "))}</span>` : `<span>Shop: ${escapeHtml(product.at_shop || shopInfo.name)}</span>`}
+          ${variantInfo.codes.length ? `<span>Code: ${escapeHtml(variantInfo.codes.join(", "))}</span>` : (product.code ? `<span>Code: ${escapeHtml(product.code)}</span>` : "")}
+          <span id="product-detail-barcode">Barcode: ${escapeHtml(variantInfo.variants.find(v => v.barcode)?.barcode || product.barcode || "Not available")}</span>
+          <span>${escapeHtml(shopInfo.location)}</span>
+        </div>
+        ${sizes.length ? `<fieldset class="product-choice"><legend>Size</legend><div class="product-option-buttons">${sizes.map((value, index) => `<button type="button" class="product-option-button ${index === 0 ? "selected" : ""}" data-option-group="size" data-option-value="${escapeHtml(value)}" aria-pressed="${index === 0}">${escapeHtml(value)}</button>`).join("")}</div></fieldset>` : ""}
+        ${colors.length ? `<fieldset class="product-choice"><legend>Color</legend><div class="product-option-buttons">${colors.map((value, index) => `<button type="button" class="product-option-button product-color-button ${index === 0 ? "selected" : ""}" data-option-group="color" data-option-value="${escapeHtml(value)}" aria-pressed="${index === 0}"><span class="product-color-swatch" aria-hidden="true"></span>${escapeHtml(value)}</button>`).join("")}</div></fieldset>` : ""}
+        <div class="product-delivery"><h3>Delivery</h3><label class="product-choice">Delivery option<select id="product-delivery-method" class="input">${delivery.map(value => `<option>${escapeHtml(value)}</option>`).join("")}</select></label><label class="product-choice">Destination<input id="product-delivery-destination" class="input" placeholder="Enter delivery address or pickup location"></label></div>
+        <div class="product-rating"><strong>How would you rate this product?</strong><div class="rating-stars" role="group" aria-label="Rate this product">${[1,2,3,4,5].map(n => `<button type="button" data-rating="${n}" aria-label="${n} stars">${n <= savedRating ? "★" : "☆"}</button>`).join("")}</div><span id="product-rating-message">${savedRating ? `Your rating: ${savedRating} out of 5` : "Tap a star to leave a rating"}</span></div>
+        <div class="product-detail-actions"><label>Quantity <input id="product-detail-quantity" class="input" type="number" min="1" max="${Math.max(stock, 1)}" value="1"></label>
+          <button class="button button-primary" id="product-detail-add">Add to Cart</button>
+          <button class="button button-secondary" id="product-detail-buy">Buy Now</button></div>
+      </div>`;
+    bindImageGallery(content.querySelector(".product-gallery"), images, getProductIcon(product.name));
+    content.querySelectorAll('[data-option-group="color"]').forEach(button => colorButtonStyle(button, button.dataset.optionValue));
+    content.querySelectorAll("[data-option-group]").forEach(button => button.addEventListener("click", () => {
+      const group = button.dataset.optionGroup;
+      content.querySelectorAll(`[data-option-group="${group}"]`).forEach(option => {
+        const selected = option === button;
+        option.classList.toggle("selected", selected);
+        option.setAttribute("aria-pressed", String(selected));
+      });
+      if (group === "size" || group === "color") updateVariantBarcode(content, variantInfo, product);
+    }));
+    updateVariantBarcode(content, variantInfo, product);
+    content.querySelectorAll("[data-rating]").forEach(button => button.addEventListener("click", () => {
+      const rating = Number(button.dataset.rating);
+      const ratings = JSON.parse(localStorage.getItem("hiper_product_ratings") || "{}");
+      ratings[productKey] = rating;
+      localStorage.setItem("hiper_product_ratings", JSON.stringify(ratings));
+      content.querySelectorAll("[data-rating]").forEach(star => star.textContent = Number(star.dataset.rating) <= rating ? "★" : "☆");
+      $("#product-rating-message").textContent = `Thanks for rating this product ${rating} out of 5.`;
+    }));
+    const add = (buyNow) => {
+      if (!Array.isArray(state.cart)) state.cart = [];
+      const qty = Math.max(1, Number($("#product-detail-quantity")?.value) || 1);
+      const existing = state.cart.find(line => String(line.product.id) === String(product.id));
+      const selected = {
+        size: content.querySelector('[data-option-group="size"].selected')?.dataset.optionValue || "",
+        color: content.querySelector('[data-option-group="color"].selected')?.dataset.optionValue || "",
+        delivery: $("#product-delivery-method")?.value || "",
+        destination: $("#product-delivery-destination")?.value.trim() || ""
+      };
+      const cartProduct = { ...product, ...selected };
+      if (existing) { existing.quantity += qty; existing.product = { ...existing.product, ...selected }; }
+      else state.cart.push({ product: cartProduct, quantity: qty, price });
+      renderHomeCart();
+      if (window.HiperPos) window.HiperPos.renderCart();
+      if (buyNow && window.HiperApp) window.HiperApp.navigate("pos");
+      else showToast(`Added "${product.name}" to cart.`);
+    };
+    $("#product-detail-add")?.addEventListener("click", () => add(false));
+    $("#product-detail-buy")?.addEventListener("click", () => add(true));
+
+    const all = (state.products || []).filter(p => String(p.id) !== String(product.id));
+    const sameShop = all.filter(p => String(p.at_shop || "").toLowerCase() === String(product.at_shop || "").toLowerCase());
+    const sameCategory = all.filter(p => getProductIcon(p.name) === getProductIcon(product.name));
+    renderProductRecommendations("#product-suggestions", sameShop.length ? sameShop : all);
+    renderProductRecommendations("#product-related", sameCategory.length ? sameCategory : all.filter(p => p.at_shop !== product.at_shop));
+  }
+
+  function updateVariantBarcode(content, info, product) {
+    const selectedSize = content.querySelector('[data-option-group="size"].selected')?.dataset.optionValue;
+    const selectedColor = content.querySelector('[data-option-group="color"].selected')?.dataset.optionValue;
+    const shopName = getShopDetails(product.at_shop || info.shops[0]).name.toLowerCase();
+    const candidates = info.variants.filter(variant => (!selectedSize || variant.size === selectedSize) && (!selectedColor || variant.color === selectedColor) && variant.barcode);
+    const match = candidates.find(variant => getShopDetails(variant.shop).name.toLowerCase() === shopName && (!product.code || variant.code === String(product.code))) || candidates.find(variant => getShopDetails(variant.shop).name.toLowerCase() === shopName) || candidates[0];
+    const barcode = content.querySelector("#product-detail-barcode");
+    if (barcode) barcode.textContent = `Barcode: ${match?.barcode || product.barcode || "Not available"}`;
+    const stock = content.querySelector("#product-detail-stock");
+    if (stock && match) stock.textContent = `${match.quantity} in stock for selected size/color`;
+  }
+
+  function renderProductRecommendations(selector, products) {
+    const container = $(selector);
+    if (!container) return;
+    container.replaceChildren();
+    products.slice(0, 4).forEach(product => {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "product-recommendation-card";
+      const images = productImage(product);
+      card.innerHTML = `${images.length ? `<img src="${escapeHtml(images[0])}" alt="">` : `<span>${getProductIcon(product.name)}</span>`}<strong>${escapeHtml(product.name)}</strong><small>$${(Number(product.price) || 0).toFixed(2)}</small>`;
+      card.addEventListener("click", () => openProductPage(product));
+      container.append(card);
+    });
+    if (!products.length) container.innerHTML = `<p class="muted">More products will appear here as they become available.</p>`;
+  }
+
   function renderShopPageProducts() {
     const grid = $("#shoppage-products-grid");
     if (!grid || !currentShopObj) return;
@@ -332,12 +539,16 @@ window.HiperHome = (() => {
     items.forEach(product => {
       const card = document.createElement("article");
       card.className = "shoppage-product-card";
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", `View ${product.name} details`);
       const icon = getProductIcon(product.name);
+      const images = productImage(product);
       const priceFormatted = "$" + (Number(product.price) || 0).toFixed(2);
 
       card.innerHTML = `
+        <div class="shop-product-image product-gallery">${images.length ? `<img data-gallery-image src="" alt="${escapeHtml(product.name)}"><span data-gallery-fallback hidden>${icon}</span>` : `<span data-gallery-fallback>${icon}</span>`}<button type="button" class="gallery-arrow gallery-prev" data-gallery-prev aria-label="Previous image">‹</button><span class="gallery-count" data-gallery-count></span><button type="button" class="gallery-arrow gallery-next" data-gallery-next aria-label="Next image">›</button></div>
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-          <span style="font-size: 42px;">${icon}</span>
           <span class="post-price-badge" style="position: static;">${priceFormatted}</span>
         </div>
         <div>
@@ -349,8 +560,18 @@ window.HiperHome = (() => {
           <button class="button button-primary full-width btn-shop-buy" style="font-size: 11px;">⚡ Buy Now</button>
         </div>
       `;
+      bindImageGallery(card.querySelector(".product-gallery"), images, icon);
 
-      card.querySelector(".btn-shop-cart")?.addEventListener("click", () => {
+      card.addEventListener("click", () => openProductPage(product));
+      card.addEventListener("keydown", event => {
+        if (event.target === card && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          openProductPage(product);
+        }
+      });
+
+      card.querySelector(".btn-shop-cart")?.addEventListener("click", (event) => {
+        event.stopPropagation();
         if (!Array.isArray(state.cart)) state.cart = [];
         const existing = state.cart.find((line) => String(line.product.id) === String(product.id));
         if (existing) existing.quantity += 1;
@@ -360,7 +581,8 @@ window.HiperHome = (() => {
         showToast(`Added "${product.name}" to cart!`);
       });
 
-      card.querySelector(".btn-shop-buy")?.addEventListener("click", () => {
+      card.querySelector(".btn-shop-buy")?.addEventListener("click", (event) => {
+        event.stopPropagation();
         if (!Array.isArray(state.cart)) state.cart = [];
         const existing = state.cart.find((line) => String(line.product.id) === String(product.id));
         if (existing) existing.quantity += 1;
@@ -541,6 +763,7 @@ window.HiperHome = (() => {
     const isFollowing = followedShops.has(shopName) || followedShops.has(shopLabel);
     const isLiked = likedProducts.has(String(product.id));
     const icon = getProductIcon(product.name);
+    const images = productImage(product);
     const priceFormatted = "$" + (Number(product.price) || 0).toFixed(2);
     const baseLikes = 18 + ((Number(product.id || 1) * 31) % 190);
     const currentLikes = isLiked ? baseLikes + 1 : baseLikes;
@@ -564,8 +787,10 @@ window.HiperHome = (() => {
         </button>
       </div>
 
-      <div class="post-media">
-        <span class="product-media-icon">${icon}</span>
+      <div class="post-media product-gallery">
+        ${images.length ? `<img class="feed-product-image" data-gallery-image src="" alt="${escapeHtml(product.name)}">` : `<span class="product-media-icon" data-gallery-fallback>${icon}</span>`}
+        ${images.length ? `<span class="product-media-icon" data-gallery-fallback hidden>${icon}</span>` : ""}
+        <button type="button" class="gallery-arrow gallery-prev" data-gallery-prev aria-label="Previous image">‹</button><span class="gallery-count" data-gallery-count></span><button type="button" class="gallery-arrow gallery-next" data-gallery-next aria-label="Next image">›</button>
         <span class="post-media-tag">
           ${product.service ? "⚡ Service" : `📦 ${product.quantity || 0} in stock`}
         </span>
@@ -651,6 +876,11 @@ window.HiperHome = (() => {
     likeBtn?.addEventListener("click", toggleLike);
 
     const media = card.querySelector(".post-media");
+    bindImageGallery(media, images, icon);
+    media?.addEventListener("click", (event) => {
+      if (event.target.closest("[data-gallery-prev], [data-gallery-next]")) return;
+      openProductPage(product);
+    });
     media?.addEventListener("dblclick", toggleLike);
 
     // Cart & Quick Buy Handlers
@@ -860,6 +1090,8 @@ window.HiperHome = (() => {
     setupInfiniteScroll();
     renderShopStories();
     renderHomeCart();
+    const productBack = $("#productpage-back-btn");
+    if (productBack) productBack.onclick = () => window.HiperApp?.navigate("shoppage");
 
     if (!isInitialized) {
       isInitialized = true;

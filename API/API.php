@@ -385,6 +385,40 @@ function handle_py_api(array $input): void
         }
     }
 
+    // 1b. Execute SQL (Update table database on cloud server)
+    if (strcasecmp($do, 'EXECUTE SQL') === 0 || strcasecmp($do, 'EXECUTE_SQL') === 0 || strcasecmp($do, 'EXECUTE') === 0) {
+        $sql = trim((string)($input['QUERYS'] ?? $input['query'] ?? $input['SQL'] ?? ''));
+        $values = $getValues('QUERYVALUES');
+        if (empty($values) && isset($input['value'])) {
+            $v = $input['value'];
+            $values = is_array($v) ? array_values($v) : [$v];
+        }
+        try {
+            if ($sql === '') {
+                app_json_response(['status' => 'Erorr', 'Erorr' => 'No SQL query provided.']);
+            }
+            $stmt = $db->prepare($sql);
+            $stmt->execute($values);
+
+            $rows = [];
+            if (str_starts_with(strtoupper($sql), 'SELECT')) {
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $affected = $stmt->rowCount();
+            $lastId = (int)$db->lastInsertId();
+
+            app_json_response([
+                'status' => 'success',
+                'message' => 'SQL executed successfully',
+                'affected_rows' => $affected,
+                'last_id' => $lastId,
+                'Value' => $rows
+            ]);
+        } catch (\Throwable $e) {
+            app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => null]);
+        }
+    }
+
     // 2. Get User
     if (strcasecmp($do, 'GET USER') === 0) {
         $where = trim((string)($input['QUERYS'] ?? ''));
@@ -567,7 +601,7 @@ function handle_py_api(array $input): void
         }
     }
 
-    // 10. Set Document (Insert)
+    // 10. Set Document (Insert single)
     if (strcasecmp($do, 'SET DOCUMENT') === 0) {
         $queryClause = trim((string)($input['QUERYS'] ?? ''));
         $values = $getValues('QUERYVALUES');
@@ -586,6 +620,54 @@ function handle_py_api(array $input): void
         } catch (\Throwable $e) {
             app_json_response(['status' => 'Erorr', 'Erorr' => $e->getMessage(), 'Value' => null]);
         }
+    }
+
+    // 10b. Set Documents (Multi / Batch Insert)
+    if (strcasecmp($do, 'SET DOCUMENTS') === 0 || strcasecmp($do, 'SET_DOCUMENTS') === 0) {
+        $queries = $input['QUERYS'] ?? $input['DOCUMENTS'] ?? [];
+        $ids = $input['IDS'] ?? [];
+        $succeeded = [];
+        $failed = [];
+
+        if (is_array($queries)) {
+            foreach ($queries as $index => $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $q = $item[0] ?? '';
+                $v = $item[1] ?? [];
+                $itemId = $ids[$index] ?? ($item[2] ?? $index);
+
+                if (!is_string($q) || trim($q) === '') {
+                    continue;
+                }
+
+                $qTrim = trim($q);
+                if (!preg_match('/^(INSERT|UPDATE|DELETE|REPLACE)/i', $qTrim)) {
+                    $qTrim = 'INSERT INTO doc_table ' . $qTrim;
+                }
+
+                if (!is_array($v)) {
+                    $v = ($v !== null && $v !== '') ? [$v] : [];
+                }
+
+                try {
+                    $stmt = $db->prepare($qTrim);
+                    $stmt->execute(array_values($v));
+                    $succeeded[] = $itemId;
+                } catch (\Throwable $e) {
+                    $failed[] = ['id' => $itemId, 'error' => $e->getMessage()];
+                }
+            }
+        }
+
+        app_json_response([
+            'status' => 'success',
+            'message' => 'Processed ' . count($succeeded) . ' document(s)',
+            'succeeded' => $succeeded,
+            'succeeded_ids' => $succeeded,
+            'failed' => $failed
+        ]);
     }
 
     // 11. Update Document

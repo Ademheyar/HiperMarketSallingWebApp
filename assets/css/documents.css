@@ -658,3 +658,7 @@
     padding: 6px 8px;
   }
 }
+.payment-tool-report-card { grid-column: 1 / -1; }
+.payment-tool-report-lines { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 7px 16px; margin-top: 9px; color: var(--muted); font-size: 12px; }
+.payment-tool-report-lines > div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.payment-tool-report-lines strong { color: var(--text); white-space: nowrap; }

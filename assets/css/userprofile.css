@@ -23,3 +23,36 @@
 .profile-sub-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
 .profile-tab { flex: 1; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-raised); color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; }
 .profile-tab.active { border-color: var(--accent); color: var(--text); background: rgb(21 101 192 / 20%); }
+.profile-upgrade-dialog { width: min(760px, calc(100% - 24px)); max-height: min(90dvh, 900px); overflow: auto; }
+.profile-upgrade-dialog .upgrade-dialog-form { display: grid; gap: 12px; }
+.upgrade-step-indicator { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.upgrade-step-indicator span { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; font-weight: 800; white-space: nowrap; }
+.upgrade-step-indicator span.active { color: var(--accent); }
+.upgrade-step-indicator span small { font-size: 12px; }
+.upgrade-step-indicator i { height: 1px; flex: 1; background: var(--line); }
+.upgrade-viewport { width: 100%; overflow: hidden; }
+.upgrade-track { display: flex; width: 300%; align-items: flex-start; transition: transform 260ms ease; }
+.upgrade-step { flex: 0 0 33.3333%; min-width: 0; padding: 2px 1px; }
+.upgrade-plan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 8px 0; }
+.upgrade-plan { display: grid; gap: 9px; min-height: 124px; padding: 14px; text-align: left; color: var(--text); background: var(--panel-raised); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.upgrade-plan.selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent); }
+.upgrade-price { font-size: 20px; font-weight: 800; }
+.upgrade-plan .upgrade-price { font-size: 15px; }
+.upgrade-price small, .upgrade-plan > small { color: var(--muted); font-size: 11px; font-weight: 500; }
+.upgrade-method-grid { display: grid; gap: 12px; margin-top: 12px; }
+.upgrade-method { display: grid; grid-template-columns: 48px minmax(0, 1fr) 24px; align-items: center; gap: 14px; min-height: 88px; padding: 15px 18px; text-align: left; color: var(--text); background: var(--panel-raised); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.upgrade-method.selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent); }
+.upgrade-method-icon { display: grid; width: 46px; height: 46px; place-items: center; border-radius: 12px; color: var(--accent); background: rgb(21 101 192 / 18%); font-size: 23px; font-weight: 900; }
+.upgrade-method > span:nth-child(2) { display: grid; gap: 5px; }
+.upgrade-method small { color: var(--muted); font-size: 12px; }
+.upgrade-method > b { color: var(--accent); opacity: 0; font-size: 18px; }
+.upgrade-method.selected > b { opacity: 1; }
+.profile-upgrade-dialog [hidden] { display: none !important; }
+.upgrade-secure-note { padding: 11px 13px; margin: 0; color: var(--muted); background: var(--panel-raised); border-radius: 9px; font-size: 12px; }
+.upgrade-checkout-message:empty { display: none; }
+@media (max-width: 640px) {
+  .upgrade-plan-grid { grid-template-columns: 1fr; }
+  .upgrade-plan { min-height: 0; padding: 11px 13px; }
+  .upgrade-method { min-height: 82px; padding: 12px; }
+  .profile-upgrade-dialog .dialog-actions { flex-wrap: wrap; }
+}

@@ -204,48 +204,92 @@ try {
         </div>
       </section>
 
+      <!-- PRODUCT DETAIL VIEW -->
+      <section class="view" id="view-productpage">
+        <div class="product-detail-page">
+          <button class="button button-secondary button-small" id="productpage-back-btn">← Back to Shop</button>
+          <div id="product-detail-content" class="product-detail-content"></div>
+          <section class="product-recommendations">
+            <h3>Suggestions for you</h3>
+            <div id="product-suggestions" class="product-recommendation-grid"></div>
+          </section>
+          <section class="product-recommendations">
+            <h3>Related results</h3>
+            <div id="product-related" class="product-recommendation-grid"></div>
+          </section>
+        </div>
+      </section>
+
       <!-- 2. POS TERMINAL VIEW -->
       <section class="view" id="view-pos">
-        <div class="section-toolbar">
-          <div><p class="eyebrow">CHECKOUT</p><h2>POS Terminal</h2></div>
+        <div class="pos-sticky-controls">
+        <div class="pos-inventory-search">
+          <label class="field-label" for="pos-search">Search Inventory</label>
+          <input class="input" id="pos-search" placeholder="Search product name, code, or scan barcode..." autocomplete="off">
+          <div class="product-results" id="pos-results" hidden></div>
+        </div>
+        <div class="section-toolbar pos-toolbar">
           <div class="toolbar-actions pos-action-bar">
-            <button class="button button-secondary" id="pos-calc-btn">🧮 Calcu (F1)</button>
-            <button class="button button-secondary" id="pos-none-item-btn">📦 None (F2)</button>
-            <button class="button button-secondary" id="pos-activities-btn">⚡ Perform End Day (F6)</button>
-            <button class="button button-primary" id="pos-payment-btn">💳 Payment (F10)</button>
+            <button class="button button-secondary" id="pos-calc-btn" title="Show detailed sale totals (F1)">More Totals <kbd>F1</kbd></button>
+            <button class="button button-secondary" id="pos-none-item-btn" title="Clear all cart items (F2)">🧹 Clear Items <kbd>F2</kbd></button>
+            <button class="button button-secondary" id="pos-activities-btn" title="End day report (F6)">📊 End Day <kbd>F6</kbd></button>
+            <button class="button button-primary" id="pos-payment-btn" title="Take payment (F10)">💳 Payment <kbd>F10</kbd></button>
+            <button class="button button-secondary" id="pos-hold-btn" title="Save this sale for later">⏸ Hold Sale</button>
+            <button class="button button-secondary" id="pos-held-list-btn" title="Recall a held sale">↩ Held Sales</button>
             <button class="button button-secondary" id="pos-drawer-btn">💵 Cash Drawer</button>
-            <button class="button button-secondary" id="clear-cart">Clear Cart</button>
+            <button class="button button-secondary" id="pos-fullscreen-btn" title="Toggle full screen">⛶ Full Screen</button>
           </div>
         </div>
+        </div>
         <div class="pos-layout">
-          <article class="panel product-picker">
-            <label class="field-label" for="pos-search">Search Inventory</label>
-            <input class="input" id="pos-search" placeholder="Search product name, code, or scan barcode..." autocomplete="off">
-            <div class="product-results" id="pos-results"><p class="empty-state">Loading inventory...</p></div>
-          </article>
+          <div class="pos-left-column">
+          <article class="panel selected-items-panel">
+              <div class="panel-heading">
+                <div><p class="eyebrow">SELECTED ITEMS</p><h3>Cart Items <span class="count-pill" id="cart-count">0</span></h3></div>
+              </div>
+              <div id="cart-items" class="cart-items"><p class="empty-state">Your active cart is empty.</p></div>
+            </article>
+          </div>
           <article class="panel cart-panel">
             <div class="panel-heading">
-              <div><p class="eyebrow">ACTIVE CART</p><h3>Active Cart <span class="count-pill" id="cart-count">0</span></h3></div>
+              <div><p class="eyebrow">CHECKOUT</p><h3>Sale Summary</h3></div>
             </div>
             <div class="form-grid compact">
               <label class="field"><span>Shop</span><select class="input" id="sale-shop"><option value="">Select Shop</option></select></label>
-              <label class="field"><span>Customer</span><input class="input" id="sale-customer" placeholder="Customer Name / ID"></label>
+              <label class="field"><span>Customer</span><input class="input" id="sale-customer" list="pos-customer-options" placeholder="Walk-in Customer or search customers"><datalist id="pos-customer-options"></datalist></label>
             </div>
-            <div id="cart-items" class="cart-items"><p class="empty-state">Your active cart is empty.</p></div>
-            <div class="cart-summary">
-              <div><span>Subtotal</span><strong id="cart-subtotal">$0.00</strong></div>
-              <div><span>Tax</span><strong id="cart-tax">$0.00</strong></div>
-              <div><span>Discount</span><strong id="cart-discount">$0.00</strong></div>
-              <div class="grand-total"><span>Total After</span><strong id="cart-total">$0.00</strong></div>
+            <div class="cart-summary-card">
+              <div class="cart-total-line"><span>Total After</span><strong id="cart-total">$0.00</strong></div>
+              <button class="button button-quiet button-small" id="cart-summary-more" type="button" aria-expanded="false" aria-controls="cart-summary-details">More total details</button>
+              <div class="cart-summary-details" id="cart-summary-details" hidden>
+                <div><span>Total Items</span><strong id="cart-total-items">0</strong></div>
+                <div><span>Total Tax</span><strong id="cart-tax">$0.00</strong></div>
+                <div><span>Item Discount</span><strong id="cart-item-discount">$0.00</strong></div>
+                <div><span>Total Discount</span><strong id="cart-discount">$0.00</strong></div>
+                <div><span>Price Before</span><strong id="cart-subtotal">$0.00</strong></div>
+                <div class="grand-total"><span>Total After</span><strong id="cart-total-detail">$0.00</strong></div>
+              </div>
             </div>
-            <div class="form-grid compact">
-              <label class="field"><span>Received Amount ($)</span><input class="input" id="sale-received" type="number" min="0" step="0.01" value="0"></label>
-              <label class="field"><span>Payment Method</span><select class="input" id="sale-method"><option>Cash</option><option>Card</option><option>Credit</option><option>Mobile Payment</option></select></label>
-            </div>
-            <button class="button button-primary full-width" id="complete-sale">Complete Sale &amp; Print Slip</button>
+            <button class="button button-primary full-width" id="complete-sale">Take Payment &amp; Complete Sale</button>
             <p class="form-message" id="pos-message" role="status"></p>
           </article>
         </div>
+        <dialog class="dialog pos-payment-dialog" id="pos-payment-dialog">
+          <div class="dialog-card">
+            <div class="dialog-heading"><div><p class="eyebrow">CHECKOUT</p><h2>Split Payment</h2></div><button class="icon-button" type="button" id="pos-payment-close" aria-label="Close payment">×</button></div>
+            <div class="pos-payment-total"><span>Sale total</span><strong id="pos-payment-total">$0.00</strong><span>Remaining</span><strong id="pos-payment-remaining">$0.00</strong></div>
+            <div class="pos-payment-entry"><label class="field"><span>Payment method</span><select class="input" id="pos-payment-method"><option>Cash</option><option>Card</option><option>Credit</option><option>Mobile Payment</option></select></label><label class="field"><span>Amount</span><input class="input" id="pos-payment-amount" type="number" min="0.01" step="0.01"></label><button class="button button-secondary" id="pos-payment-add" type="button">Add payment</button><button class="button button-quiet" id="pos-payment-keypad" type="button" title="Open amount keypad">⌨ Keypad</button></div>
+            <div id="pos-payment-lines" class="pos-payment-lines"></div>
+            <p id="pos-payment-message" class="form-message" role="status"></p>
+            <div class="dialog-actions"><button class="button button-secondary" type="button" id="pos-payment-cancel">Cancel</button><button class="button button-primary" type="button" id="pos-payment-confirm">Complete Sale</button></div>
+          </div>
+        </dialog>
+        <dialog class="dialog pos-held-dialog" id="pos-held-dialog">
+          <div class="dialog-card">
+            <div class="dialog-heading"><div><p class="eyebrow">SAVED CHECKOUTS</p><h2>Held Sales</h2></div><button class="icon-button" type="button" id="pos-held-close" aria-label="Close held sales">×</button></div>
+            <div class="pos-held-list" id="pos-held-list"></div>
+          </div>
+        </dialog>
       </section>
 
       <!-- 3. USER PROFILE VIEW (Matching UserPanelScreen in MainActivity.kt) -->
@@ -479,6 +523,7 @@ try {
 
                   <!-- Financial Metrics Grid (100% Matching Doc.py home_tab Row/Column layout) -->
                   <div class="report-metrics-grid margin-top-md">
+                    <div class="report-card payment-tool-report-card"><span>Paid by Payment Tool</span><div id="rep-payment-tools" class="payment-tool-report-lines"></div></div>
                     <!-- Row 0: Cash Paid | Cash Outs | Cash Stock | Total Profit -->
                     <div class="report-card"><span>Cash Paid</span><strong id="rep-cash">$0.00</strong></div>
                     <div class="report-card"><span>Cash Outs</span><strong id="rep-cash-outs">$0.00</strong></div>
@@ -626,7 +671,7 @@ try {
                   <button class="button button-primary" id="btn-add-expense">Add Expense</button>
                 </div>
                 <div class="table-scroll">
-                  <table><thead><tr><th>ID</th><th>Title</th><th>Amount</th><th>Category</th><th>Date</th><th>Ref</th><th>Description</th></tr></thead><tbody id="expenses-body"></tbody></table>
+                  <table><thead><tr><th>ID</th><th>Title</th><th>Amount</th><th>Category</th><th>Date</th><th>Ref</th><th>Description</th><th>Shop</th></tr></thead><tbody id="expenses-body"></tbody></table>
                 </div>
               </article>
 
@@ -833,7 +878,7 @@ try {
             <div class="endday-row highlight-row">
               <span class="endday-label">Total After Expenses:</span><strong id="endday-total-after-exp-val">$0.00</strong>
             </div>
-            <div class="endday-row"><span class="endday-label">Inventory Stock Value:</span><strong id="endday-stock-val">$0.00</strong></div>
+            <div class="endday-row"><span class="endday-label">Stock (Cash + Card + Credit):</span><strong id="endday-stock-val">$0.00</strong></div>
             <div class="endday-row grand-row">
               <span class="endday-label">Final Reconciled Total:</span><strong id="endday-total-after-stock-val">$0.00</strong>
             </div>
@@ -1009,10 +1054,11 @@ try {
       <div class="dialog-heading"><div><p class="eyebrow">NUMERIC KEYPAD</p><h2 id="keypad-title">Change Value (0-10)</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button></div>
       <input class="input keypad-display" id="keypad-input" type="text" value="0">
       <div class="keypad-grid">
-        <button class="keypad-btn" data-key="7">7</button><button class="keypad-btn" data-key="8">8</button><button class="keypad-btn" data-key="9">9</button>
-        <button class="keypad-btn" data-key="4">4</button><button class="keypad-btn" data-key="5">5</button><button class="keypad-btn" data-key="6">6</button>
-        <button class="keypad-btn" data-key="1">1</button><button class="keypad-btn" data-key="2">2</button><button class="keypad-btn" data-key="3">3</button>
-        <button class="keypad-btn" data-key="0">0</button><button class="keypad-btn" data-key=".">.</button><button class="keypad-btn danger" data-key="clear">CLR</button>
+        <button class="keypad-btn" data-key="7">7</button><button class="keypad-btn" data-key="8">8</button><button class="keypad-btn" data-key="9">9</button><button class="keypad-btn keypad-operator" data-key="/">÷</button>
+        <button class="keypad-btn" data-key="4">4</button><button class="keypad-btn" data-key="5">5</button><button class="keypad-btn" data-key="6">6</button><button class="keypad-btn keypad-operator" data-key="*">×</button>
+        <button class="keypad-btn" data-key="1">1</button><button class="keypad-btn" data-key="2">2</button><button class="keypad-btn" data-key="3">3</button><button class="keypad-btn keypad-operator" data-key="-">−</button>
+        <button class="keypad-btn" data-key="0">0</button><button class="keypad-btn" data-key=".">.</button><button class="keypad-btn danger" data-key="clear">CLR</button><button class="keypad-btn keypad-operator" data-key="+">+</button>
+        <button class="keypad-btn keypad-equals" data-key="=">=</button>
       </div>
       <div class="dialog-actions">
         <button class="button button-secondary" type="button" data-close-dialog>Cancel</button>
