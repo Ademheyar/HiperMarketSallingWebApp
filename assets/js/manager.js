@@ -24,12 +24,12 @@ window.HiperManager = (() => {
       }
       if (activeManagerTab === "products" && window.HiperProducts) window.HiperProducts.renderProducts();
       if (activeManagerTab === "customers" && window.HiperCustomers) window.HiperCustomers.renderUsers();
-      if (activeManagerTab === "shops" && window.HiperShops) window.HiperShops.renderShops();
+      if (activeManagerTab === "promotions" && window.HiperTools) window.HiperTools.renderPromotions();
       if (activeManagerTab === "tools" && window.HiperTools) {
         window.HiperTools.renderTools();
-        window.HiperTools.renderPromotions();
       }
       if (activeManagerTab === "shop-settings" && window.HiperShopSettings) {
+        window.HiperShopSettings.loadShopInfo();
         window.HiperShopSettings.renderExpenses();
         window.HiperShopSettings.renderMatrix();
         window.HiperShopSettings.renderWorkers();

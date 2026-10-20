@@ -40,7 +40,7 @@ try {
   <link rel="stylesheet" href="assets/css/shopsettings.css">
   <link rel="stylesheet" href="assets/css/getvalue.css">
   <link rel="stylesheet" href="assets/css/security.css">
-  <link rel="stylesheet" href="assets/css/manager.css">
+  <link rel="stylesheet" href="assets/css/manager.css?v=20261017-manager-dialog1">
 
   <!-- SEPARATE MODULAR JS FILES FOR EACH FRAME/PAGE -->
   <script src="assets/js/api.js" defer></script>
@@ -49,11 +49,10 @@ try {
   <script src="assets/js/home.js" defer></script>
   <script src="assets/js/pos.js" defer></script>
   <script src="assets/js/userprofile.js" defer></script>
-  <script src="assets/js/products.js" defer></script>
+  <script src="assets/js/products.js?v=20261017-manager-dialog1" defer></script>
   <script src="assets/js/documents.js" defer></script>
-  <script src="assets/js/tools.js" defer></script>
+  <script src="assets/js/tools.js?v=20261017-manager-dialog1" defer></script>
   <script src="assets/js/customers.js" defer></script>
-  <script src="assets/js/shops.js" defer></script>
   <script src="assets/js/shopsettings.js" defer></script>
   <script src="assets/js/reports.js" defer></script>
   <script src="assets/js/applicationsettings.js" defer></script>
@@ -146,8 +145,8 @@ try {
 
             <div class="home-cart-footer">
               <div class="home-cart-summary">
-                <div><span>Subtotal</span><strong id="home-cart-subtotal">$0.00</strong></div>
-                <div class="grand-total"><span>Total</span><strong id="home-cart-total">$0.00</strong></div>
+                <div><span>Subtotal</span><strong id="home-cart-subtotal">0.00</strong></div>
+                <div class="grand-total"><span>Total</span><strong id="home-cart-total">0.00</strong></div>
               </div>
               <div class="home-cart-actions">
                 <button class="button button-primary full-width" id="home-cart-checkout">💳 Complete Sale &amp; Checkout</button>
@@ -175,9 +174,10 @@ try {
                 <span class="verified-badge">✓ Verified Store</span>
               </div>
               <p id="shoppage-brand" style="margin: 4px 0 0; color: var(--accent); font-weight: 700; font-size: 13px;">BELLEMA FASHION</p>
+              <p id="shoppage-currency" class="muted" style="margin: 2px 0 0; font-size: 12px;">Currency: ETB</p>
               <p id="shoppage-location" class="muted" style="margin: 2px 0 0; font-size: 12px;">📍 Bole, Addis Ababa · Ethiopia</p>
             </div>
-            <button class="btn-follow not-following" id="shoppage-follow-btn" style="margin-left: auto;">Follow</button>
+          <button class="btn-follow not-following" id="shoppage-follow-btn" style="margin-left: auto;">Follow</button>
           </div>
         </div>
 
@@ -259,15 +259,15 @@ try {
               <label class="field"><span>Customer</span><input class="input" id="sale-customer" list="pos-customer-options" placeholder="Walk-in Customer or search customers"><datalist id="pos-customer-options"></datalist></label>
             </div>
             <div class="cart-summary-card">
-              <div class="cart-total-line"><span>Total After</span><strong id="cart-total">$0.00</strong></div>
+              <div class="cart-total-line"><span>Total After</span><strong id="cart-total">0.00</strong></div>
               <button class="button button-quiet button-small" id="cart-summary-more" type="button" aria-expanded="false" aria-controls="cart-summary-details">More total details</button>
               <div class="cart-summary-details" id="cart-summary-details" hidden>
                 <div><span>Total Items</span><strong id="cart-total-items">0</strong></div>
-                <div><span>Total Tax</span><strong id="cart-tax">$0.00</strong></div>
-                <div><span>Item Discount</span><strong id="cart-item-discount">$0.00</strong></div>
-                <div><span>Total Discount</span><strong id="cart-discount">$0.00</strong></div>
-                <div><span>Price Before</span><strong id="cart-subtotal">$0.00</strong></div>
-                <div class="grand-total"><span>Total After</span><strong id="cart-total-detail">$0.00</strong></div>
+                <div><span>Total Tax</span><strong id="cart-tax">0.00</strong></div>
+                <div><span>Item Discount</span><strong id="cart-item-discount">0.00</strong></div>
+                <div><span>Total Discount</span><strong id="cart-discount">0.00</strong></div>
+                <div><span>Price Before</span><strong id="cart-subtotal">0.00</strong></div>
+                <div class="grand-total"><span>Total After</span><strong id="cart-total-detail">0.00</strong></div>
               </div>
             </div>
             <button class="button button-primary full-width" id="complete-sale">Take Payment &amp; Complete Sale</button>
@@ -277,7 +277,7 @@ try {
         <dialog class="dialog pos-payment-dialog" id="pos-payment-dialog">
           <div class="dialog-card">
             <div class="dialog-heading"><div><p class="eyebrow">CHECKOUT</p><h2>Split Payment</h2></div><button class="icon-button" type="button" id="pos-payment-close" aria-label="Close payment">×</button></div>
-            <div class="pos-payment-total"><span>Sale total</span><strong id="pos-payment-total">$0.00</strong><span>Remaining</span><strong id="pos-payment-remaining">$0.00</strong></div>
+            <div class="pos-payment-total"><span>Sale total</span><strong id="pos-payment-total">0.00</strong><span>Remaining</span><strong id="pos-payment-remaining">0.00</strong></div>
             <div class="pos-payment-entry"><label class="field"><span>Payment method</span><select class="input" id="pos-payment-method"><option>Cash</option><option>Card</option><option>Credit</option><option>Mobile Payment</option></select></label><label class="field"><span>Amount</span><input class="input" id="pos-payment-amount" type="number" min="0.01" step="0.01"></label><button class="button button-secondary" id="pos-payment-add" type="button">Add payment</button><button class="button button-quiet" id="pos-payment-keypad" type="button" title="Open amount keypad">⌨ Keypad</button></div>
             <div id="pos-payment-lines" class="pos-payment-lines"></div>
             <p id="pos-payment-message" class="form-message" role="status"></p>
@@ -366,15 +366,15 @@ try {
               </button>
               <button class="mgr-nav-btn" data-mgr-tab="tools">
                 <span class="mgr-nav-icon">🔧</span>
-                <span class="mgr-nav-text">Tools &amp; Promo</span>
+                <span class="mgr-nav-text">Tools</span>
               </button>
               <button class="mgr-nav-btn" data-mgr-tab="customers">
                 <span class="mgr-nav-icon">👥</span>
                 <span class="mgr-nav-text">Users &amp; Customers</span>
               </button>
-              <button class="mgr-nav-btn" data-mgr-tab="shops">
+              <button class="mgr-nav-btn" data-mgr-tab="promotions">
                 <span class="mgr-nav-icon">🏬</span>
-                <span class="mgr-nav-text">Shops &amp; Stores</span>
+                <span class="mgr-nav-text">Promotion &amp; Action</span>
               </button>
               <button class="mgr-nav-btn" data-mgr-tab="shop-settings">
                 <span class="mgr-nav-icon">⚙️</span>
@@ -455,7 +455,7 @@ try {
               </div>
 
               <!-- Live Totals Header Bar (Doc.py) -->
-              <div class="summary-header-card" id="doc-summary-header">TOTAL DOC : 0 ITEMS : 0 COUNTED Grand Total : $0.00</div>
+              <div class="summary-header-card" id="doc-summary-header">TOTAL DOC : 0 ITEMS : 0 COUNTED Grand Total : 0.00</div>
 
               <!-- Sub-Tab 1: List Docs Data Table Grid (Doc.py) -->
               <div class="panel table-panel" id="doc-list-view">
@@ -525,33 +525,33 @@ try {
                   <div class="report-metrics-grid margin-top-md">
                     <div class="report-card payment-tool-report-card"><span>Paid by Payment Tool</span><div id="rep-payment-tools" class="payment-tool-report-lines"></div></div>
                     <!-- Row 0: Cash Paid | Cash Outs | Cash Stock | Total Profit -->
-                    <div class="report-card"><span>Cash Paid</span><strong id="rep-cash">$0.00</strong></div>
-                    <div class="report-card"><span>Cash Outs</span><strong id="rep-cash-outs">$0.00</strong></div>
-                    <div class="report-card"><span>Cash Stock</span><strong id="rep-cash-stock">$0.00</strong></div>
-                    <div class="report-card"><span>Total Profit</span><strong id="rep-profit">$0.00</strong></div>
+                    <div class="report-card"><span>Cash Paid</span><strong id="rep-cash">0.00</strong></div>
+                    <div class="report-card"><span>Cash Outs</span><strong id="rep-cash-outs">0.00</strong></div>
+                    <div class="report-card"><span>Cash Stock</span><strong id="rep-cash-stock">0.00</strong></div>
+                    <div class="report-card"><span>Total Profit</span><strong id="rep-profit">0.00</strong></div>
 
                     <!-- Row 1: Card Paid | Card Outs | Card Stock | Profit After Outs -->
-                    <div class="report-card"><span>Card Paid</span><strong id="rep-card">$0.00</strong></div>
-                    <div class="report-card"><span>Card Outs</span><strong id="rep-card-outs">$0.00</strong></div>
-                    <div class="report-card"><span>Card Stock</span><strong id="rep-card-stock">$0.00</strong></div>
-                    <div class="report-card"><span>Profit After Outs</span><strong id="rep-profit-after-outs">$0.00</strong></div>
+                    <div class="report-card"><span>Card Paid</span><strong id="rep-card">0.00</strong></div>
+                    <div class="report-card"><span>Card Outs</span><strong id="rep-card-outs">0.00</strong></div>
+                    <div class="report-card"><span>Card Stock</span><strong id="rep-card-stock">0.00</strong></div>
+                    <div class="report-card"><span>Profit After Outs</span><strong id="rep-profit-after-outs">0.00</strong></div>
 
                     <!-- Row 2: Card In | Expenses | Credit Stock | Paid After Outs -->
-                    <div class="report-card"><span>Card In</span><strong id="rep-card-in">$0.00</strong></div>
-                    <div class="report-card"><span>Expenses</span><strong id="rep-expenses">$0.00</strong></div>
-                    <div class="report-card"><span>Credit Stock</span><strong id="rep-credit-stock">$0.00</strong></div>
-                    <div class="report-card"><span>Paid After Outs</span><strong id="rep-paid-after-outs">$0.00</strong></div>
+                    <div class="report-card"><span>Card In</span><strong id="rep-card-in">0.00</strong></div>
+                    <div class="report-card"><span>Expenses</span><strong id="rep-expenses">0.00</strong></div>
+                    <div class="report-card"><span>Credit Stock</span><strong id="rep-credit-stock">0.00</strong></div>
+                    <div class="report-card"><span>Paid After Outs</span><strong id="rep-paid-after-outs">0.00</strong></div>
 
                     <!-- Row 3: Total Paid | Total Out | Total Stock | End Day -->
-                    <div class="report-card highlight"><span>Total Paid</span><strong id="rep-paid">$0.00</strong></div>
-                    <div class="report-card"><span>Total Out</span><strong id="rep-total-out">$0.00</strong></div>
-                    <div class="report-card"><span>Total Stock</span><strong id="rep-total-stock">$0.00</strong></div>
+                    <div class="report-card highlight"><span>Total Paid</span><strong id="rep-paid">0.00</strong></div>
+                    <div class="report-card"><span>Total Out</span><strong id="rep-total-out">0.00</strong></div>
+                    <div class="report-card"><span>Total Stock</span><strong id="rep-total-stock">0.00</strong></div>
                     <div class="report-card action-card"><button class="button button-primary full-width" id="btn-end-day">⚡ Perform End Day</button></div>
 
                     <!-- Row 4: Amount Unpaid | Net Total | GRAND TOTAL -->
-                    <div class="report-card"><span>Amount Unpaid</span><strong id="rep-unpaid">$0.00</strong></div>
-                    <div class="report-card"><span>Net Total</span><strong id="rep-total">$0.00</strong></div>
-                    <div class="report-card highlight" style="grid-column: span 2;"><span>GRAND TOTAL</span><strong id="rep-gtotal">$0.00</strong></div>
+                    <div class="report-card"><span>Amount Unpaid</span><strong id="rep-unpaid">0.00</strong></div>
+                    <div class="report-card"><span>Net Total</span><strong id="rep-total">0.00</strong></div>
+                    <div class="report-card highlight" style="grid-column: span 2;"><span>GRAND TOTAL</span><strong id="rep-gtotal">0.00</strong></div>
                   </div>
 
                   <div class="section-toolbar margin-top-md">
@@ -573,78 +573,197 @@ try {
 
             <!-- Sub-Frame 2: Products -->
             <div class="mgr-subframe hidden" id="mgr-subframe-products">
+              <!-- Title on Top -->
               <div class="section-toolbar">
                 <h3>Products Catalogue &amp; Inventory</h3>
-                <div class="toolbar-actions">
-                  <input class="input search-input" data-search="products" placeholder="Search products...">
-                  <button class="button button-primary manager-only" data-add="products">Add Product</button>
-                </div>
               </div>
-              <div class="panel table-panel">
-                <div class="table-scroll">
-                  <table>
-                    <thead><tr><th>Product Name</th><th>Code / Barcode</th><th>Shop</th><th>Stock Qty</th><th>Unit Price</th><th>Cost</th><th>Service</th><th>Actions</th></tr></thead>
-                    <tbody id="products-body"></tbody>
-                  </table>
-                </div>
+
+              <!-- Products Catalogue Main Tabs -->
+              <div class="product-main-tabs" role="tablist" aria-label="Products catalogue tabs">
+                <button class="product-main-tab active" id="tab-products-list" type="button" role="tab" aria-selected="true" aria-controls="panel-products-list" data-product-tab="list">Products</button>
+                <button class="product-main-tab" id="tab-products-report" type="button" role="tab" aria-selected="false" aria-controls="panel-products-report" data-product-tab="report">Products Report</button>
               </div>
+
+              <!-- Products Tab Panel -->
+              <section class="product-main-panel" id="panel-products-list" role="tabpanel" aria-labelledby="tab-products-list">
+                <!-- 1. Total Information Boxes (Summary Grid) on Top -->
+                <div class="product-summary-grid product-list-summary" id="product-list-summary"></div>
+
+                <!-- 2. Searching Panel BELOW Total Information Boxes (3 Rows) -->
+                <div class="panel manager-product-toolbar">
+                  <!-- Row 1: Shop Dropdown + Search Bar -->
+                  <div class="product-toolbar-row product-toolbar-row-1">
+                    <select class="input" id="product-shop-filter" aria-label="Shop">
+                      <option value="">All shops</option>
+                    </select>
+                    <input class="input search-input" data-search="products" placeholder="Search products..." aria-label="Search products">
+                  </div>
+
+                  <!-- Row 2: is Cost & is Price Buttons -->
+                  <div class="product-toolbar-row product-toolbar-row-2">
+                    <button class="button" id="product-cost-filter" type="button">is Cost</button>
+                    <button class="button" id="product-price-filter" type="button">is Price</button>
+                  </div>
+
+                  <!-- Row 3: Rest of Action Buttons -->
+                  <div class="product-toolbar-row product-toolbar-row-3">
+                    <button class="button button-secondary" id="product-refresh" type="button">Refresh</button>
+                    <button class="button button-secondary" id="product-price-tag" type="button">Price Tag</button>
+                    <button class="button button-secondary" id="product-bulk-toggle" type="button">Multiple Add Products</button>
+                    <button class="button" id="product-edit-selected" type="button" disabled>Edit</button>
+                    <button class="button button-danger" id="product-delete-selected" type="button" disabled>Delete</button>
+                    <button class="button button-primary" data-add="products" type="button">Add New Product</button>
+                  </div>
+                </div>
+
+                <!-- 3. Category Tree & Product Listed Panel -->
+                <div class="product-catalog-layout">
+                  <aside class="panel product-category-tree-panel">
+                    <div class="product-category-tree-heading">
+                      <h3>Product Categories</h3>
+                      <button class="text-button" id="product-category-clear" type="button">All Products</button>
+                    </div>
+                    <div id="product-category-tree" class="product-category-tree"></div>
+                  </aside>
+
+                  <div class="product-catalog-content">
+                    <div class="product-current-path-row">
+                      <div class="product-current-path" id="product-current-path"></div>
+                      <button class="button button-quiet cat-toggle-btn" id="cat-toggle-btn" type="button" title="Toggle Category Tree">∨</button>
+                    </div>
+
+                    <dialog class="dialog product-bulk-dialog" id="product-bulk-panel" aria-labelledby="product-bulk-title">
+                      <div class="dialog-card">
+                        <div class="dialog-heading">
+                          <div>
+                            <p class="eyebrow">PRODUCT ENTRY</p>
+                            <h2 id="product-bulk-title">Add / Edit Multiple Items</h2>
+                          </div>
+                          <div class="product-bulk-heading-actions">
+                            <button class="button button-primary" id="product-bulk-add-item" type="button">Add Item</button>
+                            <button class="icon-button" id="product-bulk-close" type="button" aria-label="Close dialog">×</button>
+                          </div>
+                        </div>
+
+                        <!-- New Item List on Top -->
+                        <div id="product-bulk-items" class="product-bulk-items"></div>
+
+                        <!-- Summary & Payments Below -->
+                        <div class="product-bulk-summary">
+                          <div><span>COUNT</span><strong id="bulk-count">0</strong></div>
+                          <div><span>TOTAL QTY</span><strong id="bulk-qty">0</strong></div>
+                          <div><span>TOTAL COST</span><strong id="bulk-cost">0</strong></div>
+                          <div><span>TOTAL PRICE</span><strong id="bulk-price">0</strong></div>
+                          <div><span>TOTAL PROFIT</span><strong id="bulk-profit">0</strong></div>
+                        </div>
+
+                        <div class="product-bulk-payments">
+                          <label class="field"><span>Credit amount</span><input class="input" id="bulk-credit" type="number" step="any" readonly></label>
+                          <label class="field"><span>Cash amount</span><input class="input" id="bulk-cash" type="number" step="any" value="0"></label>
+                          <label class="field"><span>Card amount</span><input class="input" id="bulk-card" type="number" step="any" value="0"></label>
+                          <p id="bulk-payment-warning" class="form-message" role="status"></p>
+                        </div>
+
+                        <div class="dialog-actions">
+                          <button class="button" id="product-bulk-cancel" type="button">Cancel</button>
+                          <button class="button button-primary" id="product-bulk-process" type="button">Process</button>
+                        </div>
+                      </div>
+                    </dialog>
+
+                    <div id="products-body" class="product-list-cards"></div>
+                  </div>
+                </div>
+              </section>
+            <section class="product-main-panel hidden" id="panel-products-report" role="tabpanel" aria-labelledby="tab-products-report">
+              <div class="product-report-tabs" role="tablist" aria-label="Product report tabs"><button class="product-report-tab active" type="button" role="tab" aria-selected="true" aria-controls="panel-product-info" data-product-report-tab="info">Products Info</button><button class="product-report-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-product-outofstock" data-product-report-tab="outofstock">Out Of Stocks</button></div>
+              <section id="panel-product-info" class="product-report-panel" role="tabpanel">
+              <div class="toolbar-actions product-report-toolbar"><select class="input" id="product-report-mode"><option>Count Product By Code</option><option selected>Count Product Stock By Code</option><option>Product Total Salle By Date</option><option>Product Total Salle By Code</option></select><input class="input" type="date" id="product-date-from"><input class="input" type="date" id="product-date-to"><button class="button button-primary" id="product-report-refresh" type="button">GetDate</button></div>
+              <div class="product-summary-grid" id="product-summary"></div>
+              <div class="panel product-report-chart-panel"><h3>Product Report Chart</h3><div class="product-report-chart" id="product-report-chart"></div></div>
+              </section>
+              <section id="panel-product-outofstock" class="product-report-panel hidden" role="tabpanel">
+                <div class="section-toolbar product-out-stock-toolbar"><div><p class="eyebrow">INVENTORY CONTROL</p><h3>Out Of Stocks</h3></div><div class="toolbar-actions"><input class="input search-input" id="product-out-stock-search" placeholder="Search product, code, color, size..."><input class="input" type="date" id="product-out-stock-date" aria-label="Document Updated Date"><button class="button" id="product-out-stock-search-button" type="button">Search</button><button class="button" id="product-out-stock-print" type="button">Print</button><button class="button" id="product-out-stock-refresh" type="button">Refresh</button><button class="button button-danger" id="product-balance-stock" type="button">Balance Stock</button></div></div>
+                <div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th>Product</th><th>Shop</th><th>Code</th><th>Color</th><th>Size</th><th>Barcode</th><th>Current Qty</th><th>Last Updated</th></tr></thead><tbody id="product-out-stock-body"></tbody></table></div></div>
+              </section>
+            </section>
             </div>
 
-            <!-- Sub-Frame 3: Tools & Promo -->
-            <div class="mgr-subframe hidden" id="mgr-subframe-tools">
-              <div class="section-toolbar">
-                <h3>Hardware Tools &amp; Promotional Discounts</h3>
-                <div class="toolbar-actions">
-                  <button class="button button-primary manager-only" data-add="tools">Add Tool</button>
-                  <button class="button button-primary manager-only" data-add="promotions">Add Promotion</button>
-                </div>
-              </div>
-              <div class="content-grid">
-                <article class="panel">
-                  <h3>🔧 Hardware Tools &amp; Peripherals</h3>
-                  <div class="table-scroll">
-                    <table><thead><tr><th>Tool Name</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody id="tools-body"></tbody></table>
-                  </div>
-                </article>
-                <article class="panel">
-                  <h3>🏷️ Promotional Actions &amp; Discounts</h3>
-                  <div class="table-scroll">
-                    <table><thead><tr><th>Action Name</th><th>Discount %</th><th>Status</th><th>Actions</th></tr></thead><tbody id="promotions-body"></tbody></table>
-                  </div>
-                </article>
+            <!-- Shop payment tools -->
+          <div class="mgr-subframe hidden" id="mgr-subframe-tools">
+            <div class="section-toolbar manager-list-toolbar"><h3>Payment Tools</h3><div class="toolbar-actions"><select class="input" id="tool-shop-filter" aria-label="Filter tools by shop"><option value="">All shops</option></select><input class="input search-input" id="tool-search" placeholder="Search payment tools..."><button class="button button-primary" id="tool-add" type="button">New</button><button class="button" id="tool-edit" type="button" disabled>Edit</button><button class="button" id="tool-delete" type="button" disabled>Delete</button></div></div>
+            <div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th>Shop</th><th>Name</th><th>Method</th><th>Tool ID</th><th>Shortcut</th><th>Access Key</th><th>Enabled</th><th>Quick Pay</th><th>Mark Pad</th><th>Customer</th><th>Drawer</th><th>Receipt</th><th>Change</th></tr></thead><tbody id="tools-body"></tbody></table></div></div>
+            <dialog class="dialog manager-editor-dialog action-editor" id="tool-editor"><div class="dialog-card"><div class="dialog-heading"><div><p class="eyebrow">PAYMENT TOOL</p><h2 id="tool-editor-title">New payment tool</h2></div><button class="icon-button" id="tool-cancel" type="button" aria-label="Close">×</button></div>
+              <form id="tool-form" class="form-grid">
+                <label class="field"><span>Shop</span><select class="input" id="tool-shop" required></select></label><label class="field"><span>Tool name</span><input class="input" id="tool-name" required></label>
+                <label class="field"><span>Tool method</span><select class="input" id="tool-method" required><option value="">Choose method</option><option>CASH</option><option>CARD</option><option>CREADIT</option><option>CASHOUT</option><option>CASHIN</option><option>OTHER</option></select></label>
+                <label class="field"><span>Tool ID</span><input class="input" id="tool-code"></label><label class="field"><span>Shortcut</span><input class="input" id="tool-shortcut"></label><label class="field"><span>Access key</span><input class="input" id="tool-access"></label>
+                <label class="field tool-flag"><input type="checkbox" id="tool-enabled"> Enabled</label><label class="field tool-flag"><input type="checkbox" id="tool-quick"> Quick payment</label><label class="field tool-flag"><input type="checkbox" id="tool-markpad"> Mark pad</label><label class="field tool-flag"><input type="checkbox" id="tool-customer"> Customer required</label><label class="field tool-flag"><input type="checkbox" id="tool-drawer"> Open cash drawer</label><label class="field tool-flag"><input type="checkbox" id="tool-receipt"> Print receipt</label><label class="field tool-flag"><input type="checkbox" id="tool-change"> Change allowed</label>
+                <p class="form-message wide" id="tool-message" role="status"></p><div class="dialog-actions wide"><button class="button button-secondary" id="tool-cancel-footer" type="button">Cancel</button><button class="button button-primary" type="submit">Save tool</button></div>
+              </form></div></dialog>
+          </div>
+
+          <!-- Sub-Frame 3: Shop Promotional Actions -->
+          <div class="mgr-subframe hidden" id="mgr-subframe-promotions">
+            <div class="section-toolbar manager-list-toolbar">
+              <h3>Promotional Actions</h3>
+              <div class="toolbar-actions">
+                <select class="input" id="action-shop-filter" aria-label="Filter actions by shop"><option value="">All shops</option></select>
+                <input class="input search-input" id="action-search" placeholder="Search actions..." aria-label="Search promotional actions">
+                <button class="button button-primary" id="action-add" type="button">New</button><button class="button" id="action-edit-selected" type="button" disabled>Edit</button><button class="button" id="action-delete-selected" type="button" disabled>Delete</button>
               </div>
             </div>
+            <div class="panel table-panel">
+              <div class="table-scroll"><table><thead><tr><th>Code</th><th>Action</th><th>Shop</th><th>Created</th><th>From</th><th>To</th><th>Conditions</th></tr></thead><tbody id="promotions-body"></tbody></table></div>
+            </div>
+            <dialog class="dialog manager-editor-dialog action-editor" id="action-editor"><div class="dialog-card">
+              <div class="dialog-heading"><div><p class="eyebrow">PROMOTION &amp; ACTION</p><h2 id="action-editor-title">New promotional action</h2></div><button class="icon-button" id="action-cancel" type="button" aria-label="Close">×</button></div>
+              <form id="action-form" class="form-grid">
+                <label class="field"><span>Shop</span><select class="input" id="action-shop" required></select></label>
+                <label class="field"><span>Action code</span><input class="input" id="action-code" required></label>
+                <label class="field"><span>Action title</span><input class="input" id="action-title" required></label>
+                <label class="field"><span>Start date</span><input class="input" id="action-from" type="date" required></label>
+                <label class="field"><span>End date</span><input class="input" id="action-to" type="date" required></label>
+                <div class="field wide"><strong>If: conditions to qualify</strong></div>
+                <label class="field"><span>Minimum total price</span><input class="input" id="action-if-price" type="number" step="any" min="0"></label>
+                <label class="field"><span>Minimum total discount</span><input class="input" id="action-if-discount" type="number" step="any" min="0"></label>
+                <label class="field"><span>Minimum item quantity</span><input class="input" id="action-if-qty" type="number" step="any" min="0"></label>
+                <label class="field"><span>Minimum profit</span><input class="input" id="action-if-profit" type="number" step="any" min="0"></label>
+                <label class="field wide"><span>Qualifying products (Ctrl/Cmd to select several)</span><select class="input action-products" id="action-if-products" multiple size="5"></select></label>
+                <div class="field wide"><strong>Do: apply this offer</strong></div>
+                <label class="field"><span>Offer total price</span><input class="input" id="action-do-price" type="number" step="any" min="0"></label>
+                <label class="field"><span>Offer total discount</span><input class="input" id="action-do-discount" type="number" step="any" min="0"></label>
+                <label class="field wide"><span>Offer products (Ctrl/Cmd to select several)</span><select class="input action-products" id="action-do-products" multiple size="5"></select></label>
+                <p class="form-message wide" id="action-message" role="status"></p>
+                <div class="dialog-actions wide"><button class="button button-secondary" id="action-cancel-footer" type="button">Cancel</button><button class="button button-primary" type="submit">Save action</button></div>
+              </form>
+            </div></dialog>
+          </div>
 
-            <!-- Sub-Frame 4: Customers & Users -->
+          <!-- Sub-Frame 4: Customers & Users -->
             <div class="mgr-subframe hidden" id="mgr-subframe-customers">
-              <div class="section-toolbar">
+              <div class="section-toolbar manager-list-toolbar">
                 <h3>Users &amp; Customers Directory</h3>
                 <div class="toolbar-actions">
                   <input class="input search-input" data-search="users" placeholder="Search name, phone, or email...">
-                  <button class="button button-primary manager-only" data-add="users">Add User</button>
+                  <button class="button button-primary" id="user-add" type="button">New</button><button class="button" id="user-edit-selected" type="button" disabled>Edit</button><button class="button" id="user-delete-selected" type="button" disabled>Delete</button>
                 </div>
               </div>
               <div class="panel table-panel">
                 <div class="table-scroll">
-                  <table><thead><tr><th>Full Name</th><th>Username</th><th>Phone Number</th><th>Email</th><th>Role</th><th>Country</th><th>Actions</th></tr></thead><tbody id="users-body"></tbody></table>
+                  <table><thead><tr><th>Full Name</th><th>Username</th><th>Phone Number</th><th>Email</th><th>Role / Access</th><th>Country / City</th><th>Actions</th></tr></thead><tbody id="users-body"></tbody></table>
                 </div>
               </div>
+              <section class="panel" id="user-details-panel" hidden style="margin-top:16px;padding:18px">
+                <div class="section-toolbar"><h3 id="user-details-title">User details</h3><button class="button" id="user-details-close">Close</button></div>
+                <div class="user-profile-grid" id="user-details-fields"></div>
+                <h4 style="margin:18px 0 8px">Document history</h4>
+                <div class="table-scroll"><table><thead><tr><th>Barcode</th><th>Type</th><th>Items</th><th>Qty</th><th>Total</th><th>Payment</th><th>Date</th><th></th></tr></thead><tbody id="user-documents-body"></tbody></table></div>
+              </section>
             </div>
-
-            <!-- Sub-Frame 5: Shops -->
-            <div class="mgr-subframe hidden" id="mgr-subframe-shops">
-              <div class="section-toolbar">
-                <h3>Shops &amp; Store Locations</h3>
-                <div class="toolbar-actions">
-                  <input class="input search-input" data-search="shops" placeholder="Search shops...">
-                  <button class="button button-primary manager-only" data-add="shops">Add Shop</button>
-                </div>
-              </div>
-              <div class="shop-grid" id="shops-grid"></div>
-            </div>
-
-            <!-- Sub-Frame 6: Shop Settings -->
+<!-- Sub-Frame 6: Shop Settings -->
             <div class="mgr-subframe hidden" id="mgr-subframe-shop-settings">
+              <div class="shop-settings-shop-picker"><label class="field"><span>Shop workspace</span><select class="input" id="ss-shop-select"></select></label></div>
               <div class="shop-settings-tabs">
                 <button class="shop-tab active" id="tab-shop-info">🏬 Shop Info</button>
                 <button class="shop-tab" id="tab-shop-expenses">💸 Expenses</button>
@@ -653,50 +772,50 @@ try {
               </div>
 
               <article class="panel shop-settings-panel" id="panel-shop-info">
-                <h3>🏬 Shop Information &amp; Preferences</h3>
-                <div class="form-grid">
-                  <label class="field"><span>Shop Name</span><input class="input" id="si-shop-name" value="Main Shop"></label>
-                  <label class="field"><span>Brand Name</span><input class="input" id="si-brand-name" value="BELLEMA FASHION"></label>
-                  <label class="field"><span>Shop Type</span><input class="input" id="si-shop-type" value="Clothing Store"></label>
-                  <label class="field"><span>Shop Owner</span><input class="input" id="si-shop-owner" value="AH Adem"></label>
-                  <label class="field"><span>Shop Email</span><input class="input" id="si-shop-email" value="info@shop.com"></label>
-                  <label class="field"><span>Shop Country</span><input class="input" id="si-shop-country" value="Ethiopia"></label>
+                <div class="section-toolbar"><div><p class="eyebrow">SHOP PROFILE</p><h3>Shop Information</h3></div><div id="ss-started-date" class="muted"></div></div>
+                <div class="form-grid shop-info-grid">
+                  <label class="field"><span>Shop Name</span><input class="input" id="si-shop-name"></label><label class="field"><span>Brand Name</span><input class="input" id="si-brand-name"></label>
+                  <label class="field"><span>Shop Type</span><select class="input" id="si-shop-type"><option>Grocery &amp; Food Store</option><option>Clothing &amp; Accessories Store</option><option>Electtronics &amp; Tech Store</option><option>Health &amp;Beauty Store</option><option>Home &amp; Living Store</option><option>Food Service Store</option><option>Servives</option><option>Supermarket</option><option>Convenience Store</option><option>Bakery</option><option>Butchery</option><option>Boutique</option><option>Shoes</option><option>Electronics</option><option>Mobile Phones</option><option>Pharmacy</option><option>Cosmetics</option><option>Furniture</option><option>Hardware</option><option>Restaurant</option><option>Fast Food</option><option>Coffee Shop</option><option>Liquor Store</option><option>Stationery</option><option>Auto Parts</option><option>Pet Shop</option><option>Online Store</option><option>Other</option></select></label>
+                  <label class="field"><span>Shop Owner</span><select class="input" id="si-shop-owner"></select></label><label class="field"><span>Shop Email</span><input class="input" id="si-shop-email" type="email"></label><label class="field"><span>Country</span><input class="input" id="si-shop-country"></label>
+                  <label class="field"><span>Currency</span><input class="input" id="si-shop-currency" list="ss-currency-options" placeholder="e.g. ZAR"><datalist id="ss-currency-options"><option value="ETB"><option value="ZAR"><option value="USD"><option value="EUR"><option value="GBP"><option value="KES"><option value="UGX"><option value="TZS"><option value="NGN"><option value="GHS"></datalist></label><label class="field"><span>API Link</span><input class="input" id="si-shop-link" type="url"></label>
+                  <label class="field"><span>Contact</span><input class="input" id="si-shop-contact"></label><label class="field"><span>Shop Password</span><input class="input" id="si-shop-password" type="password" autocomplete="new-password"></label>
+                  <label class="field wide"><span>About the Shop</span><textarea class="input" id="si-shop-about" rows="3"></textarea></label>
+                  <label class="field"><span>Shop Rating</span><select class="input" id="si-shop-rate"><option value="0">Not rated</option><option value="20">20%</option><option value="40">40%</option><option value="60">60%</option><option value="80">80%</option><option value="100">100%</option></select></label><label class="field tool-flag"><input type="checkbox" id="si-shop-enabled"> Shop Is Enabled</label>
                 </div>
-                <button class="button button-primary margin-top-sm" id="si-save-btn">SAVE SHOP INFO</button>
+                <div class="shop-info-lists">
+                  <section class="shop-info-list"><h4>Phone Numbers</h4><ul id="si-phones-list" class="simple-list"></ul><div class="inline-entry"><input class="input" id="si-phone-input" placeholder="Add a phone number"><button class="button" type="button" data-shop-list-add="phones">Add</button><button class="button" type="button" data-shop-list-remove="phones">Remove selected</button></div></section>
+                  <section class="shop-info-list"><h4>Social Links</h4><ul id="si-social-list" class="simple-list"></ul><div class="inline-entry"><input class="input" id="si-social-input" placeholder="Add a social link"><button class="button" type="button" data-shop-list-add="social">Add</button><button class="button" type="button" data-shop-list-remove="social">Remove selected</button></div></section>
+                  <section class="shop-info-list"><h4>Locations</h4><ul id="si-locations-list" class="simple-list"></ul><div class="inline-entry"><input class="input" id="si-location-input" placeholder="Add a location"><button class="button" type="button" data-shop-list-add="locations">Add</button><button class="button" type="button" data-shop-list-remove="locations">Remove selected</button></div></section>
+                  <section class="shop-info-list"><h4>Shop Rules</h4><ul id="si-rules-list" class="simple-list"></ul><div class="inline-entry"><input class="input" id="si-rule-input" placeholder="Add a shop rule"><button class="button" type="button" data-shop-list-add="rules">Add</button><button class="button" type="button" data-shop-list-remove="rules">Remove selected</button></div></section>
+                </div>
+                <p class="form-message" id="si-message" role="status"></p><button class="button button-primary margin-top-sm" id="si-save-btn" type="button">Save Changes</button>
               </article>
 
               <article class="panel shop-settings-panel hidden" id="panel-shop-expenses">
-                <div class="section-toolbar">
-                  <h3>💸 Shop Expenses Manager</h3>
-                  <button class="button button-primary" id="btn-add-expense">Add Expense</button>
-                </div>
-                <div class="table-scroll">
-                  <table><thead><tr><th>ID</th><th>Title</th><th>Amount</th><th>Category</th><th>Date</th><th>Ref</th><th>Description</th><th>Shop</th></tr></thead><tbody id="expenses-body"></tbody></table>
-                </div>
+                <div class="section-toolbar"><div><p class="eyebrow">SHOP OPERATIONS</p><h3>Shop Expenses</h3></div><div class="toolbar-actions"><input class="input search-input" id="expense-search" placeholder="Search expenses..."><button class="button button-primary" id="btn-add-expense" type="button">Add Expense</button><button class="button" id="btn-edit-expense" type="button" disabled>Change</button><button class="button" id="btn-delete-expense" type="button" disabled>Delete</button></div></div>
+                <div class="table-scroll"><table><thead><tr><th>ID</th><th>Title</th><th>Amount</th><th>Category</th><th>Date</th><th>Ref</th><th>Description</th><th>Repeat</th><th>Shop</th></tr></thead><tbody id="expenses-body"></tbody></table></div>
+                <section class="panel expense-editor" id="expense-editor" hidden><div class="section-toolbar"><h4 id="expense-editor-title">New Expense</h4><button class="button" id="expense-cancel" type="button">Cancel</button></div>
+                  <form id="expense-form" class="form-grid">
+                    <label class="field"><span>Shop</span><select class="input" id="expense-shop" required></select></label><label class="field"><span>Title</span><input class="input" id="expense-title" required></label><label class="field"><span>Description</span><input class="input" id="expense-description"></label><label class="field"><span>Amount</span><input class="input" id="expense-amount" type="number" min="0" step="any" required></label>
+                    <label class="field"><span>Category</span><select class="input" id="expense-category"><option>Rent</option><option>Salary</option><option>Utilities</option><option>Supplies</option><option>Maintenance</option><option>Other</option></select></label><label class="field"><span>Date</span><input class="input" id="expense-date" type="date" required></label><label class="field"><span>Receipt / Reference</span><input class="input" id="expense-ref"></label><label class="field"><span>Notes</span><input class="input" id="expense-notes"></label>
+                    <label class="field tool-flag"><input type="checkbox" id="expense-repeats"> Repeats</label><label class="field"><span>Repeat frequency</span><select class="input" id="expense-frequency"><option>Daily</option><option>Weekly</option><option selected>Monthly</option><option>Yearly</option></select></label><label class="field"><span>Every</span><input class="input" id="expense-interval" type="number" min="1" max="365" value="1"></label><label class="field"><span>Repeat ends</span><input class="input" id="expense-end" type="date"></label>
+                    <p class="form-message wide" id="expense-message" role="status"></p><div class="dialog-actions wide"><button class="button button-primary" type="submit">Save Expense</button></div>
+                  </form></section>
               </article>
 
               <article class="panel shop-settings-panel hidden" id="panel-shop-workers">
-                <h3>👥 System Security Permissions &amp; Access Levels Matrix (91 Items)</h3>
-                <div class="matrix-box">
-                  <div class="table-scroll max-height-matrix">
-                    <table><thead><tr><th>Permission System Right</th><th>Required Access Level</th><th>Action</th></tr></thead><tbody id="matrix-body"></tbody></table>
-                  </div>
-                </div>
-                <div class="section-toolbar margin-top-md">
-                  <h3>Workers List</h3>
-                  <button class="button button-primary" id="btn-change-worker-level">🧮 Change Access Level</button>
-                </div>
-                <div class="table-scroll">
-                  <table><thead><tr><th>ID</th><th>Full Name</th><th>Username</th><th>Role</th><th>Shop</th><th>Access Level</th></tr></thead><tbody id="workers-body"></tbody></table>
-                </div>
+                <div class="section-toolbar"><div><p class="eyebrow">TEAM &amp; SECURITY</p><h3>Security Permissions &amp; Access Levels</h3></div><span class="muted">Shop-specific access thresholds</span></div>
+                <div class="table-scroll max-height-matrix"><table><thead><tr><th>Permission System Right</th><th>Required Access Level</th></tr></thead><tbody id="matrix-body"></tbody></table></div>
+                <div class="section-toolbar margin-top-md"><h3>Workers List</h3><div class="toolbar-actions"><input class="input search-input" id="worker-search" placeholder="Search workers..."><select class="input" id="worker-user-select"><option value="">Select a user to join</option></select><button class="button button-primary" id="btn-join-worker" type="button">Join</button><select class="input" id="worker-level"><option value="-2">Request</option><option value="-1">Worker</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="10">Owner</option></select><button class="button" id="btn-change-worker-level" type="button" disabled>Change Access Level</button><button class="button" id="btn-remove-worker" type="button" disabled>Worker Has Left</button></div></div>
+                <div class="table-scroll"><table><thead><tr><th>ID</th><th>Full Name</th><th>Username</th><th>Role</th><th>Shop</th><th>Access Level</th></tr></thead><tbody id="workers-body"></tbody></table></div>
               </article>
 
               <article class="panel shop-settings-panel hidden" id="panel-shop-others">
-                <h3>🏷️ Category Tree &amp; Receipt Layout</h3>
-                <div class="content-grid">
-                  <div><h4>Product Hierarchy Categories</h4><ul class="simple-list" id="category-tree-list"></ul></div>
-                  <div><h4>Receipt Layout Order</h4><ul class="simple-list" id="slip-layout-list"></ul></div>
-                </div>
+                <div class="section-toolbar"><div><p class="eyebrow">SHOP CUSTOMIZATION</p><h3>Product Categories &amp; Receipt Layout</h3></div><button class="button" id="category-default" type="button">Default Categories</button></div>
+                <div class="content-grid shop-settings-editors">
+                  <section><h4>Product Hierarchy Categories</h4><p class="muted">Select a category to add a nested item or remove it.</p><div class="inline-entry"><input class="input" id="category-value" placeholder="Category name"><button class="button" id="category-add" type="button">Add</button><button class="button" id="category-delete" type="button">Delete Selected</button></div><div class="muted" id="category-path">No selection</div><ul class="simple-list category-tree" id="category-tree-list"></ul></section>
+                  <section><h4>Receipt Layout Order</h4><div class="inline-entry"><select class="input" id="slip-field"></select><button class="button" id="slip-add" type="button">Add</button><button class="button" id="slip-delete" type="button">Delete</button><button class="button" id="slip-up" type="button">Up</button><button class="button" id="slip-down" type="button">Down</button></div><ul class="simple-list" id="slip-layout-list"></ul><div class="form-grid compact margin-top-sm"><label class="field"><span>Receipt width</span><input class="input" id="slip-width" type="number" value="40"></label><label class="field"><span>Receipt height</span><input class="input" id="slip-height" type="number" value="20"></label></div></section>
+                </div><p class="form-message" id="other-settings-message" role="status"></p>
               </article>
             </div>
           </div>
@@ -841,7 +960,7 @@ try {
       </div>
 
       <!-- Modal Tabs Row -->
-      <div class="sub-tabs-row margin-top-sm">
+      <div class="sub-tabs-row margin-top-sm hidden" id="endday-report-tabs">
         <button class="sub-tab active" id="endday-tab-summary">📊 Total Summary</button>
         <button class="sub-tab" id="endday-tab-docs">📄 Reconciled Documents</button>
       </div>
@@ -852,35 +971,46 @@ try {
           📅 <span id="endday-date-str">DATE: 2026-04-20</span>
         </div>
 
-        <div class="endday-summary-box">
+        <div class="daily-report-mode" role="group" aria-label="Report detail">
+          <button class="button button-primary button-small active" type="button" id="daily-report-simple">Simple Info</button>
+          <button class="button button-secondary button-small" type="button" id="daily-report-more">More Info</button>
+        </div>
+        <section class="daily-report-cards" id="daily-report-cards" aria-label="Simple daily report">
+          <article class="report-card"><span>Cash</span><strong id="daily-cash-val">0.00</strong></article>
+          <article class="report-card"><span>Card</span><strong id="daily-card-val">0.00</strong></article>
+          <article class="report-card"><span>Total Out</span><strong id="daily-out-val">0.00</strong></article>
+          <article class="report-card"><span>Profit</span><strong id="daily-profit-val">0.00</strong></article>
+          <article class="report-card highlight"><span>Grand Total</span><strong id="daily-grand-total-val">0.00</strong></article>
+        </section>
+        <div class="endday-summary-box hidden" id="daily-report-details">
           <!-- Expenses & Outs Section -->
           <div class="endday-section">
-            <div class="endday-row danger"><span class="endday-label">Expenses:</span><strong id="endday-exp-val">$0.00</strong></div>
-            <div class="endday-row danger"><span class="endday-label">Cash Outs:</span><strong id="endday-outs-val">$0.00</strong></div>
+            <div class="endday-row danger"><span class="endday-label">Expenses:</span><strong id="endday-exp-val">0.00</strong></div>
+            <div class="endday-row danger"><span class="endday-label">Cash Outs:</span><strong id="endday-outs-val">0.00</strong></div>
             <div class="endday-divider"></div>
-            <div class="endday-row danger-sub"><span class="endday-label">Total Outflows:</span><strong id="endday-subouts-val">-$0.00</strong></div>
+            <div class="endday-row danger-sub"><span class="endday-label">Total Outflows:</span><strong id="endday-subouts-val">-0.00</strong></div>
           </div>
 
           <!-- Payments Section -->
           <div class="endday-section margin-top-sm">
-            <div class="endday-row"><span class="endday-label">Cash Paid:</span><strong id="endday-cash-val">$0.00</strong></div>
-            <div class="endday-row"><span class="endday-label">Card Paid:</span><strong id="endday-card-val">$0.00</strong></div>
+            <div class="endday-row"><span class="endday-label">Cash Paid:</span><strong id="endday-cash-val">0.00</strong></div>
+            <div class="endday-row"><span class="endday-label">Card Paid:</span><strong id="endday-card-val">0.00</strong></div>
             <div class="endday-divider"></div>
-            <div class="endday-row success-sub"><span class="endday-label">Total Paid:</span><strong id="endday-paid-val">$0.00</strong></div>
+            <div class="endday-row success-sub"><span class="endday-label">Total Paid:</span><strong id="endday-paid-val">0.00</strong></div>
           </div>
 
           <!-- Profits & Reconciled Totals Section -->
           <div class="endday-section margin-top-sm">
-            <div class="endday-row"><span class="endday-label">Gross Profit:</span><strong id="endday-profit-val">$0.00</strong></div>
+            <div class="endday-row"><span class="endday-label">Gross Profit:</span><strong id="endday-profit-val">0.00</strong></div>
             <div class="endday-row highlight-row">
-              <span class="endday-label">Profit After Expenses:</span><strong id="endday-profit-after-exp-val">$0.00</strong>
+              <span class="endday-label">Profit After Expenses:</span><strong id="endday-profit-after-exp-val">0.00</strong>
             </div>
             <div class="endday-row highlight-row">
-              <span class="endday-label">Total After Expenses:</span><strong id="endday-total-after-exp-val">$0.00</strong>
+              <span class="endday-label">Total After Expenses:</span><strong id="endday-total-after-exp-val">0.00</strong>
             </div>
-            <div class="endday-row"><span class="endday-label">Stock (Cash + Card + Credit):</span><strong id="endday-stock-val">$0.00</strong></div>
+            <div class="endday-row"><span class="endday-label">Stock (Cash + Card + Credit):</span><strong id="endday-stock-val">0.00</strong></div>
             <div class="endday-row grand-row">
-              <span class="endday-label">Final Reconciled Total:</span><strong id="endday-total-after-stock-val">$0.00</strong>
+              <span class="endday-label">Final Reconciled Total:</span><strong id="endday-total-after-stock-val">0.00</strong>
             </div>
           </div>
         </div>
@@ -980,14 +1110,7 @@ try {
       </div>
       <div class="form-grid">
         <label class="field"><span>Phone Number</span><input class="input" name="User_phone_num" placeholder="+251 900 000 000"></label>
-        <label class="field"><span>Role / Access Type</span>
-          <select class="input" name="User_type">
-            <option value="Customer">Customer</option>
-            <option value="Worker">Worker / Cashier</option>
-            <option value="Manager">Manager</option>
-            <option value="Admin">Admin</option>
-          </select>
-        </label>
+        <label class="field"><span>Account Type</span><input class="input" value="Customer" readonly></label>
       </div>
       <div class="form-grid">
         <label class="field"><span>Country</span><input class="input" name="User_country" value="Ethiopia"></label>
@@ -1067,7 +1190,7 @@ try {
     </div>
   </dialog>
 
-  <dialog class="dialog" id="record-dialog"><form class="dialog-card"><div class="dialog-heading"><div><p class="eyebrow">RECORD EDITOR</p><h2 id="record-title">Add record</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button></div><div id="record-fields" class="record-fields"></div><p class="form-message" id="record-message" role="status"></p><div class="dialog-actions"><button class="button button-secondary" type="button" data-close-dialog>Cancel</button><button class="button button-primary" type="submit">Save record</button></div></form></dialog>
+  <dialog class="dialog" id="record-dialog"><form class="dialog-card" id="record-form"><div class="dialog-heading"><div><p class="eyebrow">RECORD EDITOR</p><h2 id="record-title">Add record</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button></div><div id="record-fields" class="record-fields"></div><p class="form-message" id="record-message" role="status"></p><div class="dialog-actions"><button class="button button-secondary" type="button" data-close-dialog>Cancel</button><button class="button button-primary" type="submit">Save record</button></div></form></dialog>
 
   <dialog class="dialog" id="sale-detail-dialog"><div class="dialog-card"><div class="dialog-heading"><div><p class="eyebrow">RECEIPT</p><h2 id="receipt-title">Sale details</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button></div><pre class="receipt-paper" id="receipt-content"></pre><div class="dialog-actions"><button class="button button-secondary" type="button" id="print-receipt">Print Receipt</button><button class="button button-primary" type="button" data-close-dialog>Done</button></div></div></dialog>
 </body>

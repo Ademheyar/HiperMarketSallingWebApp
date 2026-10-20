@@ -49,9 +49,10 @@ function api_user(): ?array
         return null;
     }
     try {
+        $castType = app_db()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? 'CHAR' : 'TEXT';
         $statement = app_db()->prepare(
             'SELECT u.* FROM api_tokens t
-             JOIN Users u ON CAST(u.User_id AS TEXT) = t.user_id
+             JOIN Users u ON CAST(u.User_id AS ' . $castType . ') = t.user_id
              WHERE t.token_hash = ? AND t.expires_at > ?',
         );
         $statement->execute([
@@ -65,16 +66,7 @@ function api_user(): ?array
         }
     } catch (\Throwable $e) {}
 
-    // Fallback default admin session if token matches demo
-    return [
-        'User_id' => 1,
-        'User_name' => 'admin',
-        'User_fname' => 'System',
-        'User_Lname' => 'Admin',
-        'User_type' => 'Admin',
-        'User_email' => 'admin@hipermarket.com',
-        'User_country' => 'Ethiopia'
-    ];
+    return null;
 }
 
 function require_user(): array
@@ -109,7 +101,7 @@ function fetch_all(string $sql, array $values = []): array
 
 function quote_identifier(string $identifier): string
 {
-    return str_starts_with(app_config()['dsn'], 'mysql:')
+    return app_db()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'
         ? '`' . $identifier . '`'
         : '"' . $identifier . '"';
 }
@@ -121,7 +113,7 @@ function table_columns(string $table): array
         app_json_response(['ok' => false, 'error' => 'Unsupported data type.'], 400);
     }
 
-    if (str_starts_with(app_config()['dsn'], 'sqlite:')) {
+    if (app_db()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
         $statement = app_db()->query('PRAGMA table_info("' . $table . '")');
         return array_column($statement->fetchAll(), 'name');
     }
@@ -133,8 +125,66 @@ function table_columns(string $table): array
     return array_column($statement->fetchAll(), 'COLUMN_NAME');
 }
 
+function ensure_user_login_columns(): void
+{
+    $types = app_db()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'
+        ? ['User_name' => 'VARCHAR(255) NULL', 'User_email' => 'VARCHAR(255) NULL', 'User_password' => 'TEXT NULL', 'User_type' => 'VARCHAR(100) NULL']
+        : ['User_name' => 'TEXT NULL', 'User_email' => 'TEXT NULL', 'User_password' => 'TEXT NULL', 'User_type' => 'TEXT NULL'];
+    $existing = table_columns('Users');
+    foreach ($types as $field => $definition) {
+        if (!in_array($field, $existing, true)) {
+            app_db()->exec('ALTER TABLE ' . quote_identifier('Users') . ' ADD COLUMN ' . quote_identifier($field) . ' ' . $definition);
+        }
+    }
+}
+
 function save_record(string $table, array $data, ?int $id): array
 {
+    if ($table === 'Shops') {
+        $shopFields = [
+            'Shop_type' => 'TEXT NULL', 'Shop_owners_id' => 'VARCHAR(128) NULL', 'Shop_oweners_id' => 'VARCHAR(128) NULL',
+            'Shop_email' => 'VARCHAR(255) NULL', 'Shop_about' => 'TEXT NULL', 'Shop_country' => 'VARCHAR(255) NULL',
+            'Shop_password' => 'TEXT NULL', 'Shop_link' => 'TEXT NULL', 'Shop_contact' => 'TEXT NULL', 'Shop_isenabled' => 'VARCHAR(10) NULL',
+            'Shop_rate' => 'INTEGER NULL', 'Shop_SocLinks' => 'TEXT NULL', 'Shop_rules' => 'TEXT NULL',
+            'Shop_Adress_Information' => 'TEXT NULL', 'Shop_Expenses' => 'TEXT NULL', 'Shop_Security_Levels' => 'TEXT NULL',
+            'Shop_workers' => 'TEXT NULL', 'Shop_Items_type' => 'TEXT NULL', 'Shop_Slip_Settings' => 'TEXT NULL',
+            'Shop_items' => 'TEXT NULL',
+            'Company_Started_Date' => 'VARCHAR(40) NULL',
+        ];
+        if (app_db()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+            foreach ($shopFields as $field => $definition) if (str_starts_with($definition, 'TEXT')) $shopFields[$field] = 'TEXT NULL';
+        }
+        $existing = table_columns('Shops');
+        foreach ($shopFields as $field => $definition) if (!in_array($field, $existing, true)) {
+            app_db()->exec('ALTER TABLE ' . quote_identifier('Shops') . ' ADD COLUMN ' . quote_identifier($field) . ' ' . $definition);
+        }
+    }
+    if ($table === 'Users') {
+        $userFields = [
+            'User_gender' => 'VARCHAR(100) NULL', 'User_country' => 'VARCHAR(255) NULL',
+            'User_phone_num' => 'VARCHAR(100) NULL', 'User_address' => 'VARCHAR(255) NULL',
+            'User_home_no' => 'VARCHAR(255) NULL', 'User_id_pp_num' => 'VARCHAR(255) NULL',
+            'User_about' => 'TEXT NULL', 'User_shop' => 'TEXT NULL', 'User_work_shop' => 'TEXT NULL',
+            'User_access' => 'VARCHAR(100) NULL', 'User_likes' => 'TEXT NULL',
+            'User_following_shop' => 'TEXT NULL', 'User_favoraite_items' => 'TEXT NULL', 'User_rate' => 'VARCHAR(100) NULL',
+        ];
+        $existing = table_columns('Users');
+        foreach ($userFields as $field => $definition) {
+            if (!in_array($field, $existing, true)) {
+                app_db()->exec('ALTER TABLE ' . quote_identifier('Users') . ' ADD COLUMN ' . quote_identifier($field) . ' ' . $definition);
+            }
+        }
+    }
+    if ($table === 'product') {
+        $productFields = [
+            'type' => 'TEXT NULL', 'tax' => 'REAL NULL', 'include_tax' => 'INTEGER NULL', 'price_change' => 'INTEGER NULL',
+            'more_info' => 'TEXT NULL', 'images' => 'TEXT NULL', 'description' => 'TEXT NULL', 'default_quantity' => 'INTEGER NULL', 'active' => 'INTEGER NULL',
+        ];
+        $existing = table_columns('product');
+        foreach ($productFields as $field => $definition) if (!in_array($field, $existing, true)) {
+            app_db()->exec('ALTER TABLE ' . quote_identifier('product') . ' ADD COLUMN ' . quote_identifier($field) . ' ' . $definition);
+        }
+    }
     $idColumn = $table === 'product' ? 'id' : ($table === 'Users' ? 'User_id' : ($table === 'Shops' ? 'Shop_Id' : 'id'));
     $columns = table_columns($table);
     $allowedData = array_intersect_key($data, array_flip($columns));
@@ -182,6 +232,26 @@ function save_record(string $table, array $data, ?int $id): array
     return $record[0] ?? [];
 }
 
+function ensure_shop_actions_column(): void
+{
+    if (!in_array('Shop_Actions', table_columns('Shops'), true)) {
+        app_db()->exec('ALTER TABLE ' . quote_identifier('Shops') . ' ADD COLUMN ' . quote_identifier('Shop_Actions') . ' TEXT NULL');
+    }
+}
+
+function ensure_shop_payment_tools_column(): void
+{
+    if (!in_array('Shop_Payment_Tools', table_columns('Shops'), true)) {
+        app_db()->exec('ALTER TABLE ' . quote_identifier('Shops') . ' ADD COLUMN ' . quote_identifier('Shop_Payment_Tools') . ' TEXT NULL');
+    }
+}
+
+function decode_shop_actions(?string $raw): array
+{
+    $actions = json_decode((string)$raw, true);
+    return is_array($actions) ? $actions : [];
+}
+
 function save_sale(array $input, array $user): array
 {
     $shopId = trim((string)($input['shop_id'] ?? 'Main Shop'));
@@ -191,6 +261,17 @@ function save_sale(array $input, array $user): array
     }
 
     $db = app_db();
+    $subscription = fetch_all('SELECT plan_id, status FROM user_subscriptions WHERE user_id = ? LIMIT 1', [(string)($user['User_id'] ?? '')])[0] ?? ['plan_id' => 'free', 'status' => 'free'];
+    $plan = strtolower((string)$subscription['plan_id']);
+    $paid = ($subscription['status'] ?? '') === 'paid';
+    $monthlyLimit = !$paid ? 20 : (['starter' => 100, 'business' => 500, 'growth' => 2000, 'enterprise' => PHP_INT_MAX][$plan] ?? 20);
+    if ($monthlyLimit !== PHP_INT_MAX) {
+        $monthStart = gmdate('Y-m-01 00:00:00');
+        $used = (int)(fetch_all('SELECT COUNT(*) AS total FROM doc_table WHERE user_id = ? AND doc_created_date >= ?', [(string)($user['User_id'] ?? ''), $monthStart])[0]['total'] ?? 0);
+        if ($used >= $monthlyLimit) {
+            app_json_response(['ok' => false, 'error' => $paid ? 'This package monthly order limit has been reached. Upgrade to continue.' : 'Free plan limit reached (20 orders per month). Choose a paid package to continue.'], 403);
+        }
+    }
     try {
         $saleItems = [];
         $total = 0.0;
@@ -746,9 +827,42 @@ try {
         ]);
     }
 
+    if ($action === 'register' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $username = trim((string)($input['User_name'] ?? ''));
+        $email = trim((string)($input['User_email'] ?? ''));
+        $password = (string)($input['User_password'] ?? '');
+        if ($username === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 6) {
+            app_json_response(['ok' => false, 'error' => 'Enter a username, valid email, and password with at least 6 characters.'], 400);
+        }
+        try {
+            ensure_user_login_columns();
+            $duplicate = fetch_all('SELECT User_id FROM Users WHERE LOWER(User_name) = LOWER(?) OR LOWER(User_email) = LOWER(?) LIMIT 1', [$username, $email]);
+            if ($duplicate) app_json_response(['ok' => false, 'error' => 'That username or email is already registered.'], 409);
+            $data = [
+                'User_fname' => trim((string)($input['User_fname'] ?? '')),
+                'User_Lname' => trim((string)($input['User_Lname'] ?? '')),
+                'User_name' => $username,
+                'User_email' => $email,
+                'User_phone_num' => trim((string)($input['User_phone_num'] ?? '')),
+                'User_type' => 'Customer',
+                'User_country' => trim((string)($input['User_country'] ?? '')),
+                'User_address' => trim((string)($input['User_address'] ?? '')),
+                'User_password' => password_hash($password, PASSWORD_DEFAULT),
+            ];
+            $created = save_record('Users', $data, null);
+            $token = bin2hex(random_bytes(32));
+            $expires = gmdate('Y-m-d H:i:s', time() + 12 * 60 * 60);
+            $insert = app_db()->prepare('INSERT INTO api_tokens (token_hash, user_id, expires_at) VALUES (?, ?, ?)');
+            $insert->execute([hash_hmac('sha256', $token, app_config()['token_secret']), (string)$created['User_id'], $expires]);
+            app_json_response(['ok' => true, 'token' => $token, 'expires_at' => $expires, 'user' => safe_user($created)], 201);
+        } catch (\Throwable $e) {
+            app_json_response(['ok' => false, 'error' => 'Account could not be created. Check the database connection and Users table.'], 500);
+        }
+    }
+
     if ($action === 'login') {
         $username = trim((string)($input['username'] ?? ''));
-        $password = trim((string)($input['password'] ?? ''));
+        $password = (string)($input['password'] ?? '');
 
         if ($username === '') {
             app_json_response(['ok' => false, 'error' => 'Username or email is required.'], 400);
@@ -756,6 +870,7 @@ try {
 
         $user = null;
         try {
+            ensure_user_login_columns();
             $users = fetch_all(
                 'SELECT * FROM Users WHERE (User_name = ? OR User_email = ?) LIMIT 1',
                 [$username, $username],
@@ -763,12 +878,20 @@ try {
             if ($users && isset($users[0])) {
                 $candidate = $users[0];
                 $dbPass = (string)($candidate['User_password'] ?? '');
-                if ($dbPass !== '' && $password !== '' && $dbPass !== $password) {
+                $passwordInfo = password_get_info($dbPass);
+                $passwordValid = !empty($passwordInfo['algo'])
+                    ? password_verify($password, $dbPass)
+                    : hash_equals($dbPass, $password);
+                if ($dbPass === '' || !$passwordValid) {
                     app_json_response(['ok' => false, 'error' => 'Incorrect password. Please try again.'], 401);
                 }
                 $user = safe_user($candidate);
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            error_log('HiperMarket login lookup failed: ' . $e->getMessage());
+            $detail = substr(preg_replace('/password\s*=\s*[^;\s]+/i', 'password=[hidden]', $e->getMessage()) ?? 'Database query failed.', 0, 220);
+            app_json_response(['ok' => false, 'error' => 'Login database error: ' . $detail], 503);
+        }
 
         if (!$user) {
             app_json_response(['ok' => false, 'error' => 'No user account matching "' . $username . '" was found in the connected database.'], 404);
@@ -844,6 +967,130 @@ try {
     }
     if ($action === 'me') {
         app_json_response(['ok' => true, 'user' => $user]);
+    }
+    if ($action === 'subscription' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        $mine = fetch_all('SELECT * FROM user_subscriptions WHERE user_id = ? LIMIT 1', [(string)($user['User_id'] ?? '')])[0] ?? ['user_id' => (string)($user['User_id'] ?? ''), 'plan_id' => 'free', 'status' => 'free', 'paid_at' => ''];
+        app_json_response(['ok' => true, 'subscription' => $mine]);
+    }
+    if ($action === 'subscription_request' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $plan = strtolower(trim((string)($input['plan_id'] ?? '')));
+        $plans = ['starter', 'business', 'growth', 'enterprise'];
+        if (!in_array($plan, $plans, true)) app_json_response(['ok' => false, 'error' => 'Choose a valid package.'], 400);
+        $method = trim((string)($input['payment_method'] ?? ''));
+        $email = trim((string)($input['billing_email'] ?? ''));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) app_json_response(['ok' => false, 'error' => 'Enter a valid billing email.'], 400);
+        $db = app_db();
+        $upsert = str_starts_with(app_config()['dsn'], 'sqlite:')
+            ? 'INSERT INTO user_subscriptions (user_id, plan_id, status, payment_method, billing_email, paid_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET plan_id=excluded.plan_id, status=excluded.status, payment_method=excluded.payment_method, billing_email=excluded.billing_email, paid_at=excluded.paid_at, updated_at=excluded.updated_at'
+            : 'INSERT INTO user_subscriptions (user_id, plan_id, status, payment_method, billing_email, paid_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE plan_id=VALUES(plan_id), status=VALUES(status), payment_method=VALUES(payment_method), billing_email=VALUES(billing_email), paid_at=VALUES(paid_at), updated_at=VALUES(updated_at)';
+        $stmt = $db->prepare($upsert);
+        $stmt->execute([(string)($user['User_id'] ?? ''), $plan, 'pending', $method, $email, '', gmdate('Y-m-d H:i:s')]);
+        app_json_response(['ok' => true, 'status' => 'pending', 'message' => 'Package request saved. Access will be enabled after payment is verified.']);
+    }
+    if ($action === 'subscription_set' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_manager($user);
+        $id = trim((string)($input['user_id'] ?? ''));
+        $plan = strtolower(trim((string)($input['plan_id'] ?? '')));
+        $status = strtolower(trim((string)($input['status'] ?? '')));
+        if ($id === '' || !in_array($plan, ['free', 'starter', 'business', 'growth', 'enterprise'], true) || !in_array($status, ['free', 'pending', 'paid', 'suspended'], true)) app_json_response(['ok' => false, 'error' => 'Invalid user package update.'], 400);
+        $paidAt = $status === 'paid' ? gmdate('Y-m-d H:i:s') : '';
+        $db = app_db();
+        $upsert = str_starts_with(app_config()['dsn'], 'sqlite:')
+            ? 'INSERT INTO user_subscriptions (user_id, plan_id, status, payment_method, billing_email, paid_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET plan_id=excluded.plan_id, status=excluded.status, paid_at=excluded.paid_at, updated_at=excluded.updated_at'
+            : 'INSERT INTO user_subscriptions (user_id, plan_id, status, payment_method, billing_email, paid_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE plan_id=VALUES(plan_id), status=VALUES(status), paid_at=VALUES(paid_at), updated_at=VALUES(updated_at)';
+        $stmt = $db->prepare($upsert);
+        $stmt->execute([$id, $plan, $status, '', '', $paidAt, gmdate('Y-m-d H:i:s')]);
+        app_json_response(['ok' => true, 'status' => $status]);
+    }
+    if ($action === 'shop_payment_tools') {
+        ensure_shop_payment_tools_column();
+        $shops = fetch_all('SELECT Shop_Id, Shop_name, Shop_Payment_Tools FROM Shops ORDER BY Shop_name');
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $items = [];
+            foreach ($shops as $shop) {
+                $tools = json_decode((string)($shop['Shop_Payment_Tools'] ?? ''), true);
+                if (!is_array($tools)) $tools = [];
+                foreach ($tools as $index => $tool) if (is_array($tool)) $items[] = ['shop_id' => $shop['Shop_Id'], 'shop_name' => $shop['Shop_name'] ?? '', 'index' => $index, 'tool' => $tool];
+            }
+            app_json_response(['ok' => true, 'items' => $items]);
+        }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $manager = require_user();
+            require_manager($manager);
+            $shopId = trim((string)($input['shop_id'] ?? ''));
+            $operation = (string)($input['operation'] ?? 'create');
+            $index = filter_var($input['index'] ?? null, FILTER_VALIDATE_INT);
+            $payload = $input['tool'] ?? null;
+            if ($shopId === '' || !in_array($operation, ['create', 'update', 'delete'], true)) app_json_response(['ok' => false, 'error' => 'Invalid payment tool request.'], 400);
+            if ($operation !== 'delete' && (!is_array($payload) || count($payload) !== 12 || trim((string)($payload[0] ?? '')) === '' || !in_array(strtoupper((string)($payload[1] ?? '')), ['CASH', 'CARD', 'CREADIT', 'CASHOUT', 'CASHIN', 'OTHER'], true))) app_json_response(['ok' => false, 'error' => 'Provide a tool name and valid payment method.'], 400);
+            $shop = null;
+            foreach ($shops as $candidate) if ((string)$candidate['Shop_Id'] === $shopId) { $shop = $candidate; break; }
+            if (!$shop) app_json_response(['ok' => false, 'error' => 'Shop not found.'], 404);
+            $tools = json_decode((string)($shop['Shop_Payment_Tools'] ?? ''), true);
+            if (!is_array($tools)) $tools = [];
+            if ($operation === 'create') $tools[] = array_values($payload);
+            elseif ($index === false || $index < 0 || !array_key_exists($index, $tools)) app_json_response(['ok' => false, 'error' => 'Payment tool no longer exists. Refresh and try again.'], 404);
+            elseif ($operation === 'update') $tools[$index] = array_values($payload);
+            else array_splice($tools, $index, 1);
+            $stmt = app_db()->prepare('UPDATE Shops SET ' . quote_identifier('Shop_Payment_Tools') . ' = ? WHERE ' . quote_identifier('Shop_Id') . ' = ?');
+            $stmt->execute([json_encode(array_values($tools), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $shopId]);
+            app_json_response(['ok' => true, 'message' => 'Payment tool ' . ($operation === 'delete' ? 'deleted.' : 'saved.')]);
+        }
+    }
+    if ($action === 'shop_actions') {
+        ensure_shop_actions_column();
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $result = [];
+            foreach (fetch_all('SELECT Shop_Id, Shop_name, Shop_brand_name, Shop_Actions FROM Shops ORDER BY Shop_name') as $shop) {
+                foreach (decode_shop_actions($shop['Shop_Actions'] ?? '') as $actionItem) {
+                    if (!is_array($actionItem)) continue;
+                    $result[] = ['shop_id' => $shop['Shop_Id'], 'shop_name' => $shop['Shop_name'] ?? '', 'action' => $actionItem];
+                }
+            }
+            app_json_response(['ok' => true, 'items' => $result]);
+        }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_manager($user);
+            $operation = (string)($input['operation'] ?? 'save');
+            $shopId = (string)($input['shop_id'] ?? '*');
+            $code = trim((string)($input['code'] ?? ''));
+            $originalCode = trim((string)($input['original_code'] ?? $code));
+            if ($code === '') app_json_response(['ok' => false, 'error' => 'Action code is required.'], 400);
+            $shops = fetch_all('SELECT Shop_Id, Shop_name, Shop_Actions FROM Shops');
+            if ($operation === 'create') {
+                foreach ($shops as $shop) {
+                    if ($shopId !== '*' && (string)$shop['Shop_Id'] !== $shopId) continue;
+                    foreach (decode_shop_actions($shop['Shop_Actions'] ?? '') as $saved) {
+                        if (is_array($saved) && (string)($saved[0] ?? '') === $code) {
+                            app_json_response(['ok' => false, 'error' => 'An action with this code already exists in the selected shop.'], 409);
+                        }
+                    }
+                }
+            }
+            $matched = 0;
+            foreach ($shops as $shop) {
+                if ($shopId !== '*' && (string)$shop['Shop_Id'] !== $shopId) continue;
+                $actions = decode_shop_actions($shop['Shop_Actions'] ?? '');
+                if ($operation === 'delete') {
+                    $actions = array_values(array_filter($actions, static fn($item) => !is_array($item) || (string)($item[0] ?? '') !== $originalCode));
+                } else {
+                    $payload = $input['action'] ?? null;
+                    if (!is_array($payload) || count($payload) < 7 || (string)($payload[0] ?? '') !== $code) {
+                        app_json_response(['ok' => false, 'error' => 'Invalid promotion action data.'], 400);
+                    }
+                    $found = false;
+                    foreach ($actions as $i => $saved) {
+                        if (is_array($saved) && (string)($saved[0] ?? '') === $originalCode) { $actions[$i] = $payload; $found = true; break; }
+                    }
+                    if (!$found) $actions[] = $payload;
+                }
+                $stmt = app_db()->prepare('UPDATE Shops SET ' . quote_identifier('Shop_Actions') . ' = ? WHERE ' . quote_identifier('Shop_Id') . ' = ?');
+                $stmt->execute([json_encode(array_values($actions), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $shop['Shop_Id']]);
+                $matched++;
+            }
+            if ($matched === 0) app_json_response(['ok' => false, 'error' => 'No matching shop was found.'], 404);
+            app_json_response(['ok' => true, 'message' => $operation === 'delete' ? 'Promotion deleted.' : 'Promotion saved.']);
+        }
     }
     if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         app_json_response(['ok' => true, 'file' => handle_upload($user)]);
@@ -934,10 +1181,10 @@ try {
         }
         if ($resource === 'shops' && empty($rows)) {
             $rows = [
-                ['Shop_Id' => 1, 'Shop_name' => 'Main Shop', 'Shop_brand_name' => 'BELLEMA FASHION', 'Shop_location' => 'Bole, Addis Ababa', 'Shop_country' => 'Ethiopia'],
-                ['Shop_Id' => 2, 'Shop_name' => 'Flag Squer', 'Shop_brand_name' => 'A.Dot', 'Shop_location' => 'Addis Ababa', 'Shop_country' => 'Ethiopia'],
-                ['Shop_Id' => 3, 'Shop_name' => 'Hiper Tech Store', 'Shop_brand_name' => 'Hiper Tech', 'Shop_location' => 'Kazanchis Tech Hub', 'Shop_country' => 'Ethiopia'],
-                ['Shop_Id' => 4, 'Shop_name' => 'Supermarket Central', 'Shop_brand_name' => 'Central Market', 'Shop_location' => '4 Kilo Square', 'Shop_country' => 'Ethiopia']
+                ['Shop_Id' => 1, 'Shop_name' => 'Main Shop', 'Shop_brand_name' => 'BELLEMA FASHION', 'Shop_location' => 'Bole, Addis Ababa', 'Shop_country' => 'Ethiopia', 'Shop_currency' => 'ETB'],
+                ['Shop_Id' => 2, 'Shop_name' => 'Flag Squer', 'Shop_brand_name' => 'A.Dot', 'Shop_location' => 'Addis Ababa', 'Shop_country' => 'Ethiopia', 'Shop_currency' => 'ETB'],
+                ['Shop_Id' => 3, 'Shop_name' => 'Hiper Tech Store', 'Shop_brand_name' => 'Hiper Tech', 'Shop_location' => 'Kazanchis Tech Hub', 'Shop_country' => 'Ethiopia', 'Shop_currency' => 'ETB'],
+                ['Shop_Id' => 4, 'Shop_name' => 'Supermarket Central', 'Shop_brand_name' => 'Central Market', 'Shop_location' => '4 Kilo Square', 'Shop_country' => 'Ethiopia', 'Shop_currency' => 'ETB']
             ];
         }
         if ($resource === 'users') {
@@ -971,9 +1218,40 @@ try {
         try {
             $record = save_record($tables[$resource], $input['data'], isset($input['id']) ? (int)$input['id'] : null);
         } catch (\Throwable $e) {
+            if ($resource === 'users') {
+                app_json_response(['ok' => false, 'error' => 'Could not save user: ' . $e->getMessage()], 500);
+            }
             $record = array_merge(['id' => rand(10, 99)], $input['data']);
         }
         app_json_response(['ok' => true, 'item' => $resource === 'users' ? safe_user($record) : $record]);
+    }
+    if ($action === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_manager($user);
+        if (($input['resource'] ?? '') === 'products' && (int)($input['id'] ?? 0) > 0) {
+            $productId = (int)$input['id'];
+            $productRows = fetch_all('SELECT at_shop FROM product WHERE id = ?', [$productId]);
+            $shopRef = (string)($productRows[0]['at_shop'] ?? '');
+            $shopColumns = table_columns('Shops');
+            if ($shopRef !== '' && in_array('Shop_items', $shopColumns, true) && in_array('Shop_Id', $shopColumns, true)) {
+                $shopRows = fetch_all('SELECT Shop_Id, Shop_items FROM Shops WHERE CAST(Shop_Id AS CHAR) = ? OR Shop_name = ?', [$shopRef, $shopRef]);
+                foreach ($shopRows as $shopRow) {
+                    $shopItems = json_decode((string)($shopRow['Shop_items'] ?? '[]'), true);
+                    if (!is_array($shopItems)) continue;
+                    $shopItems = array_values(array_filter($shopItems, static fn($entry) => !is_array($entry) || (string)($entry[0] ?? '') !== (string)$productId));
+                    $update = app_db()->prepare('UPDATE Shops SET Shop_items = ? WHERE Shop_Id = ?');
+                    $update->execute([json_encode($shopItems), $shopRow['Shop_Id']]);
+                }
+            }
+            $stmt = app_db()->prepare('DELETE FROM product WHERE id = ?');
+            $stmt->execute([$productId]);
+            app_json_response(['ok' => true, 'deleted' => $stmt->rowCount() > 0]);
+        }
+        if (($input['resource'] ?? '') !== 'users' || (int)($input['id'] ?? 0) <= 0) {
+            app_json_response(['ok' => false, 'error' => 'Select a valid user to delete.'], 400);
+        }
+        $stmt = app_db()->prepare('DELETE FROM ' . quote_identifier('Users') . ' WHERE ' . quote_identifier('User_id') . ' = ?');
+        $stmt->execute([(int)$input['id']]);
+        app_json_response(['ok' => true, 'deleted' => $stmt->rowCount() > 0]);
     }
     if ($action === 'sale' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $sale = save_sale($input, $user);

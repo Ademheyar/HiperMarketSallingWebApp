@@ -87,6 +87,15 @@ window.HiperUserProfile = (() => {
     controlPanel.append(leftHeading, actionBtns);
     content.append(controlPanel);
 
+    const subscriptionStatus = document.createElement("p");
+    subscriptionStatus.className = "muted margin-top-sm";
+    subscriptionStatus.textContent = "Loading package access…";
+    content.append(subscriptionStatus);
+    window.HiperApi.api("subscription").then(({ subscription }) => {
+      const planName = String(subscription.plan_id || "free").replace(/^./, c => c.toUpperCase());
+      subscriptionStatus.textContent = `Current package: ${planName} · ${subscription.status === "paid" ? "Paid access active" : subscription.status === "pending" ? "Payment verification pending" : "Free access · 20 orders/month"}`;
+    }).catch(() => { subscriptionStatus.textContent = "Package access status unavailable."; });
+
     // Inline Search Drawer Panel (toggled when Request Shop is clicked)
     const searchDrawer = document.createElement("div");
     searchDrawer.className = "panel margin-top-sm hidden";
@@ -155,7 +164,7 @@ window.HiperUserProfile = (() => {
             const info = document.createElement("div");
             info.innerHTML = `
               <strong>${shopItem.Shop_name || 'Shop'} (${shopItem.Shop_brand_name || 'A.Dot'})</strong>
-              <p class="muted" style="margin:2px 0 0; font-size:12px;">Type: ${shopItem.Shop_type || 'Retail Store'} | Location: ${shopItem.Shop_location || 'N/A'}</p>
+              <p class="muted" style="margin:2px 0 0; font-size:12px;">Type: ${shopItem.Shop_type || 'Retail Store'} | Location: ${shopItem.Shop_location || 'N/A'} | Currency: ${shopItem.Shop_currency || 'ETB'}</p>
             `;
 
             const askBtn = document.createElement("button");
@@ -255,7 +264,7 @@ window.HiperUserProfile = (() => {
         brandSub.className = "muted";
         brandSub.style.margin = "3px 0 0 0";
         brandSub.style.fontSize = "12px";
-        brandSub.textContent = `Type: ${typeStr} | Location: ${locationStr}`;
+        brandSub.textContent = `Type: ${typeStr} | Location: ${locationStr} | Currency: ${shop.Shop_currency || "ETB"}`;
 
         details.append(shopTitle, brandSub);
         leftSide.append(icon, details);
@@ -281,7 +290,7 @@ window.HiperUserProfile = (() => {
           const btnEndDay = document.createElement("button");
           btnEndDay.className = "button button-primary";
           btnEndDay.style.fontWeight = "700";
-          btnEndDay.textContent = "⚡ End Day";
+          btnEndDay.textContent = "📊 Daily Report";
           btnEndDay.type = "button";
           btnEndDay.addEventListener("click", () => {
             if (window.HiperAuth) window.HiperAuth.selectActiveShop(shop);
@@ -313,11 +322,12 @@ window.HiperUserProfile = (() => {
           <div class="upgrade-step-indicator"><span class="active">1 <small>Plan</small></span><i></i><span>2 <small>Payment</small></span><i></i><span>3 <small>Details</small></span></div>
           <div class="upgrade-viewport"><div class="upgrade-track">
             <section class="upgrade-step" aria-label="Choose a plan">
-              <p class="muted">Choose a plan. Subscription prices need to be configured by the store administrator.</p>
+              <p class="muted">Compare package features and monthly order allowances. Ask your administrator for current fees.</p>
               <div class="upgrade-plan-grid" role="group" aria-label="Subscription plan">
-                <button class="upgrade-plan" type="button" data-plan="starter"><strong>Starter</strong><span class="upgrade-price">Pricing to be set</span><small>For a single growing shop</small></button>
-                <button class="upgrade-plan selected" type="button" data-plan="business"><strong>Business</strong><span class="upgrade-price">Pricing to be set</span><small>For teams and daily operations</small></button>
-                <button class="upgrade-plan" type="button" data-plan="growth"><strong>Growth</strong><span class="upgrade-price">Pricing to be set</span><small>For multiple shops and larger teams</small></button>
+                <button class="upgrade-plan" type="button" data-plan="starter"><strong>Starter</strong><span class="upgrade-price">Fee set by admin</span><small>1 shop · 100 orders/month · POS and sales reports</small></button>
+                <button class="upgrade-plan selected" type="button" data-plan="business"><strong>Business</strong><span class="upgrade-price">Fee set by admin</span><small>3 shops · 500 orders/month · Staff access and inventory</small></button>
+                <button class="upgrade-plan" type="button" data-plan="growth"><strong>Growth</strong><span class="upgrade-price">Fee set by admin</span><small>10 shops · 2,000 orders/month · Advanced reports and team tools</small></button>
+                <button class="upgrade-plan" type="button" data-plan="enterprise"><strong>Enterprise</strong><span class="upgrade-price">Contact admin</span><small>Unlimited orders · Multi shop controls · Priority support</small></button>
               </div>
             </section>
             <section class="upgrade-step" aria-label="Choose payment method">
@@ -351,7 +361,7 @@ window.HiperUserProfile = (() => {
         dialog.dataset.step = String(currentStep);
         stepLabels.forEach((label, index) => label.classList.toggle("active", index === currentStep));
         dialog.querySelector("[data-upgrade-back]").hidden = currentStep === 0;
-        dialog.querySelector("[data-upgrade-next]").textContent = currentStep === 2 ? "Continue to payment" : "Next";
+        dialog.querySelector("[data-upgrade-next]").textContent = currentStep === 2 ? "Request package" : "Next";
       };
       dialog.querySelectorAll(".upgrade-plan").forEach(button => button.addEventListener("click", () => {
         selectedPlan?.classList.remove("selected");
@@ -392,8 +402,18 @@ window.HiperUserProfile = (() => {
         const email = form.elements.billing_email;
         if (!email.reportValidity()) return;
         if (dialog.dataset.method === "card" && ![form.elements.billing_name, form.elements.billing_country, form.elements.billing_postal].every(input => input.reportValidity())) return;
-        message.textContent = "Secure checkout is not available yet: a payment gateway is not configured for this store. No payment has been taken. Contact your administrator to connect PayPal or a card processor.";
-        message.classList.add("error");
+        message.classList.remove("error", "success");
+        message.textContent = "Saving your package request…";
+        window.HiperApi.api("subscription_request", {
+          method: "POST",
+          body: { plan_id: dialog.dataset.plan, payment_method: dialog.dataset.method, billing_email: email.value.trim() }
+        }).then(result => {
+          message.textContent = result.message;
+          message.classList.add("success");
+        }).catch(error => {
+          message.textContent = error.message;
+          message.classList.add("error");
+        });
       });
       updateWizard();
     }
@@ -436,8 +456,8 @@ window.HiperUserProfile = (() => {
       $("#ptab-history")?.classList.add("active");
       if ($("#prof-tab-content")) $("#prof-tab-content").innerHTML = `
         <div class="panel margin-top-sm">
-          <p>🛒 <strong>Order #WEB-1052:</strong> $340.00 • Completed Today</p>
-          <p>🛒 <strong>Order #WEB-1051:</strong> $85.50 • Completed Yesterday</p>
+          <p>🛒 <strong>Order #WEB-1052:</strong> ${window.HiperApi.formatMoney(340, state.activeShop)} • Completed Today</p>
+          <p>🛒 <strong>Order #WEB-1051:</strong> ${window.HiperApi.formatMoney(85.5, state.activeShop)} • Completed Yesterday</p>
         </div>
       `;
     });

@@ -153,7 +153,8 @@ window.HiperAuth = (() => {
           shopsList = parsed.map(item => {
             if (Array.isArray(item)) {
               const lvl = Array.isArray(item[3]) ? Number(item[3][0]) : 1;
-              return { Shop_Id: item[0], Shop_name: item[1] || "Shop", Shop_brand_name: item[2] || "", level: lvl };
+              const fullShop = (state.shops || []).find(shop => String(shop.Shop_Id || shop.id) === String(item[0]) || String(shop.Shop_name || "") === String(item[1] || "")) || {};
+              return { ...fullShop, Shop_Id: item[0], Shop_name: item[1] || "Shop", Shop_brand_name: item[2] || "", level: lvl };
             }
             if (typeof item === "object" && item !== null) {
               item.level = item.level !== undefined ? item.level : 1;
@@ -222,7 +223,7 @@ window.HiperAuth = (() => {
 
       const btnEndDay = document.createElement("button");
       btnEndDay.className = "button button-primary button-small";
-      btnEndDay.textContent = "⚡ End Day";
+      btnEndDay.textContent = isProfileTab ? "📊 Daily Report" : "⚡ End Day";
       btnEndDay.type = "button";
       btnEndDay.addEventListener("click", () => {
         selectActiveShop(shop);
@@ -324,7 +325,7 @@ window.HiperAuth = (() => {
         title.style.display = "block";
         const sub = document.createElement("small");
         sub.className = "muted";
-        sub.textContent = brand ? `Brand: ${brand}` : "Assigned Workplace";
+        sub.textContent = `${brand ? `Brand: ${brand}` : "Assigned Workplace"} · Currency: ${shop.Shop_currency || "ETB"}`;
         info.append(title, sub);
 
         card.append(info);
@@ -402,19 +403,20 @@ window.HiperAuth = (() => {
         User_name: formData.get("User_name") || "",
         User_email: formData.get("User_email") || "",
         User_phone_num: formData.get("User_phone_num") || "",
-        User_type: formData.get("User_type") || "Customer",
         User_country: formData.get("User_country") || "Ethiopia",
         User_address: formData.get("User_address") || "",
         User_password: pass
       };
 
-      const result = await api("save", {
+      const result = await api("register", {
         method: "POST",
-        body: { resource: "users", data: userData }
+        body: userData
       });
 
-      const newUser = result.item || userData;
+      const newUser = result.user || userData;
+      state.token = result.token;
       state.user = newUser;
+      sessionStorage.setItem("hiper-token", state.token);
       updateAccountUi();
       $("#register-dialog")?.close();
       form.reset();

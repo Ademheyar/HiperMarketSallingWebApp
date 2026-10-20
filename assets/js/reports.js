@@ -4,7 +4,7 @@
 window.HiperReports = (() => {
   "use strict";
 
-  const { state, $, api } = window.HiperApi;
+  const { state, $, api, formatMoney } = window.HiperApi;
 
   async function loadReports() {
     try {
@@ -22,7 +22,7 @@ window.HiperReports = (() => {
     body.replaceChildren();
     for (const report of state.reports || []) {
       const row = document.createElement("tr");
-      row.innerHTML = `<td>${report.date}</td><td>${report.sales}</td><td>$${Number(report.gross || 0).toFixed(2)}</td>`;
+      row.innerHTML = `<td>${report.date}</td><td>${report.sales}</td><td>${formatMoney(report.gross || 0, state.activeShop)}</td>`;
       body.append(row);
     }
     if (!(state.reports || []).length) {

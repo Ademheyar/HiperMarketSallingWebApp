@@ -79,16 +79,17 @@ window.HiperHome = (() => {
         brand,
         displayName: brand ? `${name} (${brand})` : name,
         fullBrandLabel: brand ? `${name} · ${brand}` : name,
-        location
+        location,
+        currency: found.Shop_currency || "ETB"
       };
     }
 
     // Default mapping for numeric IDs if shops list not loaded yet
     const defaultShops = {
-      "1": { name: "Main Shop", brand: "BELLEMA FASHION", location: "Bole, Addis Ababa" },
-      "2": { name: "Flag Squer", brand: "A.Dot", location: "Addis Ababa" },
-      "3": { name: "Hiper Tech Store", brand: "Hiper Tech", location: "Kazanchis Tech Hub" },
-      "4": { name: "Supermarket Central", brand: "Central Market", location: "4 Kilo Square" }
+      "1": { name: "Main Shop", brand: "BELLEMA FASHION", location: "Bole, Addis Ababa", currency: "ETB" },
+      "2": { name: "Flag Squer", brand: "A.Dot", location: "Addis Ababa", currency: "ETB" },
+      "3": { name: "Hiper Tech Store", brand: "Hiper Tech", location: "Kazanchis Tech Hub", currency: "ETB" },
+      "4": { name: "Supermarket Central", brand: "Central Market", location: "4 Kilo Square", currency: "ETB" }
     };
 
     if (defaultShops[raw]) {
@@ -98,7 +99,8 @@ window.HiperHome = (() => {
         brand: d.brand,
         displayName: `${d.name} (${d.brand})`,
         fullBrandLabel: `${d.name} · ${d.brand}`,
-        location: d.location
+        location: d.location,
+        currency: d.currency
       };
     }
 
@@ -109,7 +111,8 @@ window.HiperHome = (() => {
         brand: "",
         displayName: raw,
         fullBrandLabel: raw,
-        location: "Store Location"
+        location: "Store Location",
+        currency: "ETB"
       };
     }
 
@@ -119,7 +122,8 @@ window.HiperHome = (() => {
       brand: "BELLEMA FASHION",
       displayName: "Main Shop (BELLEMA FASHION)",
       fullBrandLabel: "Main Shop · BELLEMA FASHION",
-      location: "Bole, Addis Ababa"
+      location: "Bole, Addis Ababa",
+      currency: "ETB"
     };
   }
 
@@ -225,6 +229,7 @@ window.HiperHome = (() => {
     if ($("#shoppage-name")) $("#shoppage-name").textContent = shopInfo.name;
     if ($("#shoppage-brand")) $("#shoppage-brand").textContent = shopInfo.brand || shopInfo.name;
     if ($("#shoppage-location")) $("#shoppage-location").textContent = "📍 " + shopInfo.location;
+    if ($("#shoppage-currency")) $("#shoppage-currency").textContent = `Currency: ${shopInfo.currency}`;
     if ($("#shoppage-avatar")) $("#shoppage-avatar").textContent = getShopAvatar(shopInfo.name);
 
     const followBtn = $("#shoppage-follow-btn");
@@ -408,7 +413,7 @@ window.HiperHome = (() => {
       <div class="product-detail-info">
         <p class="eyebrow">${escapeHtml(shopInfo.fullBrandLabel)}</p>
         <h1>${escapeHtml(product.name || "Product")}</h1>
-        <p class="product-detail-price">$${price.toFixed(2)}</p>
+        <p class="product-detail-price">${window.HiperApi.formatMoney(price, product.at_shop || shopInfo.name)}</p>
         <p>${escapeHtml(product.description || "No product description is available.")}</p>
         <div class="product-detail-facts">
           <span id="product-detail-stock">${stock} in stock</span>${variantInfo.shops.length ? `<span>Shops: ${escapeHtml(variantInfo.shops.map(shop => getShopDetails(shop).displayName).join(", "))}</span>` : `<span>Shop: ${escapeHtml(product.at_shop || shopInfo.name)}</span>`}
@@ -493,7 +498,7 @@ window.HiperHome = (() => {
       card.type = "button";
       card.className = "product-recommendation-card";
       const images = productImage(product);
-      card.innerHTML = `${images.length ? `<img src="${escapeHtml(images[0])}" alt="">` : `<span>${getProductIcon(product.name)}</span>`}<strong>${escapeHtml(product.name)}</strong><small>$${(Number(product.price) || 0).toFixed(2)}</small>`;
+      card.innerHTML = `${images.length ? `<img src="${escapeHtml(images[0])}" alt="">` : `<span>${getProductIcon(product.name)}</span>`}<strong>${escapeHtml(product.name)}</strong><small>${window.HiperApi.formatMoney(product.price, product.at_shop)}</small>`;
       card.addEventListener("click", () => openProductPage(product));
       container.append(card);
     });
@@ -544,7 +549,7 @@ window.HiperHome = (() => {
       card.setAttribute("aria-label", `View ${product.name} details`);
       const icon = getProductIcon(product.name);
       const images = productImage(product);
-      const priceFormatted = "$" + (Number(product.price) || 0).toFixed(2);
+      const priceFormatted = window.HiperApi.formatMoney(product.price, product.at_shop || shopInfo.name);
 
       card.innerHTML = `
         <div class="shop-product-image product-gallery">${images.length ? `<img data-gallery-image src="" alt="${escapeHtml(product.name)}"><span data-gallery-fallback hidden>${icon}</span>` : `<span data-gallery-fallback>${icon}</span>`}<button type="button" class="gallery-arrow gallery-prev" data-gallery-prev aria-label="Previous image">‹</button><span class="gallery-count" data-gallery-count></span><button type="button" class="gallery-arrow gallery-next" data-gallery-next aria-label="Next image">›</button></div>
@@ -764,7 +769,7 @@ window.HiperHome = (() => {
     const isLiked = likedProducts.has(String(product.id));
     const icon = getProductIcon(product.name);
     const images = productImage(product);
-    const priceFormatted = "$" + (Number(product.price) || 0).toFixed(2);
+    const priceFormatted = window.HiperApi.formatMoney(product.price, product.at_shop);
     const baseLikes = 18 + ((Number(product.id || 1) * 31) % 190);
     const currentLikes = isLiked ? baseLikes + 1 : baseLikes;
 
@@ -930,8 +935,14 @@ window.HiperHome = (() => {
 
     if (badge) badge.textContent = String(totalQty);
     if (countPill) countPill.textContent = String(totalQty);
-    if (subtotalEl) subtotalEl.textContent = "$" + totalPrice.toFixed(2);
-    if (totalEl) totalEl.textContent = "$" + totalPrice.toFixed(2);
+    const currencyTotals = new Map();
+    state.cart.forEach(line => {
+      const currency = window.HiperApi.currencyForShop(line.product.at_shop);
+      currencyTotals.set(currency, (currencyTotals.get(currency) || 0) + line.quantity * line.price);
+    });
+    const cartTotalText = [...currencyTotals].map(([currency, amount]) => window.HiperApi.formatMoney(amount, { Shop_currency: currency })).join(" + ") || window.HiperApi.formatMoney(0);
+    if (subtotalEl) subtotalEl.textContent = cartTotalText;
+    if (totalEl) totalEl.textContent = cartTotalText;
 
     if (!container) return;
     container.replaceChildren();
@@ -947,7 +958,7 @@ window.HiperHome = (() => {
       row.innerHTML = `
         <div class="home-cart-item-info">
           <span class="home-cart-item-title">${escapeHtml(line.product.name)}</span>
-          <span class="home-cart-item-price">$${Number(line.price).toFixed(2)} each</span>
+          <span class="home-cart-item-price">${window.HiperApi.formatMoney(line.price, line.product.at_shop)} each</span>
         </div>
         <div class="home-cart-qty-ctrl">
           <button class="qty-btn btn-minus" data-index="${index}">-</button>
@@ -1031,6 +1042,12 @@ window.HiperHome = (() => {
     }
 
     const total = state.cart.reduce((sum, line) => sum + line.quantity * line.price, 0);
+    const cartCurrencies = new Set(state.cart.map(line => window.HiperApi.currencyForShop(line.product.at_shop)));
+    if (cartCurrencies.size > 1) {
+      if (message) setMessage(message, "Your cart has products in different currencies. Check out each currency separately.", "error");
+      return;
+    }
+    const shopForSale = state.cart[0].product.at_shop || state.activeShop?.Shop_name || "Main Shop";
     if (checkoutBtn) checkoutBtn.disabled = true;
     if (message) setMessage(message, "Saving sale & updating stock...");
 
@@ -1038,7 +1055,7 @@ window.HiperHome = (() => {
       const result = await api("sale", {
         method: "POST",
         body: {
-          shop_id: "Main Shop",
+          shop_id: shopForSale,
           customer_id: "Walk-in Customer",
           received: total,
           payments: [["Cash", "Cash", total]],

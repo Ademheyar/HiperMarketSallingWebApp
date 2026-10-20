@@ -431,6 +431,12 @@
   margin-bottom: 12px;
 }
 
+.daily-report-mode { display: flex; gap: 8px; margin: 12px 0; }
+.daily-report-mode .active { border-color: var(--accent); }
+.daily-report-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.daily-report-cards .report-card:last-child { grid-column: 1 / -1; }
+@media (max-width: 560px) { .daily-report-cards { grid-template-columns: 1fr; } .daily-report-cards .report-card:last-child { grid-column: auto; } }
+
 .endday-summary-box {
   background: #08111e;
   border: 1px solid var(--line, #1c2e4a);

@@ -33,7 +33,7 @@
 .upgrade-viewport { width: 100%; overflow: hidden; }
 .upgrade-track { display: flex; width: 300%; align-items: flex-start; transition: transform 260ms ease; }
 .upgrade-step { flex: 0 0 33.3333%; min-width: 0; padding: 2px 1px; }
-.upgrade-plan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 8px 0; }
+.upgrade-plan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 8px 0; }
 .upgrade-plan { display: grid; gap: 9px; min-height: 124px; padding: 14px; text-align: left; color: var(--text); background: var(--panel-raised); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
 .upgrade-plan.selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent); }
 .upgrade-price { font-size: 20px; font-weight: 800; }

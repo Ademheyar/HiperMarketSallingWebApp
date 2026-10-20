@@ -4,7 +4,7 @@
 window.HiperPos = (() => {
   "use strict";
 
-  const { state, $, api, showToast, setMessage } = window.HiperApi;
+  const { state, $, api, showToast, setMessage, formatMoney } = window.HiperApi;
   let pendingPayments = [];
   const heldSalesKey = "hiper_pos_held_sales";
 
@@ -163,7 +163,7 @@ window.HiperPos = (() => {
       const details = document.createElement("small");
       const itemCount = (held.cart || []).reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
       const total = (held.cart || []).reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.price) || 0), 0);
-      details.textContent = `${itemCount} items · $${total.toFixed(2)} · ${new Date(held.createdAt).toLocaleString()}`;
+      details.textContent = `${itemCount} items · ${formatMoney(total, held.shop)} · ${new Date(held.createdAt).toLocaleString()}`;
       summary.append(title, details);
       const restore = document.createElement("button");
       restore.type = "button"; restore.className = "button button-primary button-small"; restore.textContent = "Recall";
@@ -224,8 +224,9 @@ window.HiperPos = (() => {
   function refreshPaymentSummary() {
     const total = cartTotal();
     const paid = pendingPayments.reduce((sum, line) => sum + line.amount, 0);
-    if ($("#pos-payment-total")) $("#pos-payment-total").textContent = `$${total.toFixed(2)}`;
-    if ($("#pos-payment-remaining")) $("#pos-payment-remaining").textContent = `$${Math.max(0, total - paid).toFixed(2)}`;
+    const shop = $("#sale-shop")?.value;
+    if ($("#pos-payment-total")) $("#pos-payment-total").textContent = formatMoney(total, shop);
+    if ($("#pos-payment-remaining")) $("#pos-payment-remaining").textContent = formatMoney(Math.max(0, total - paid), shop);
     if ($("#pos-payment-amount")) $("#pos-payment-amount").value = Math.max(0, total - paid).toFixed(2);
     const confirm = $("#pos-payment-confirm");
     if (confirm) confirm.disabled = paid + 0.00001 < total || !state.cart.length;
@@ -244,7 +245,7 @@ window.HiperPos = (() => {
       const label = document.createElement("span");
       label.textContent = payment.method;
       const amount = document.createElement("strong");
-      amount.textContent = `$${payment.amount.toFixed(2)}`;
+      amount.textContent = formatMoney(payment.amount, shop);
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "button button-quiet button-small";
@@ -303,7 +304,7 @@ window.HiperPos = (() => {
       const title = document.createElement("strong");
       title.textContent = item.name || "Unnamed Product";
       const meta = document.createElement("small");
-      meta.textContent = `${item.service ? "Service" : `${item.quantity || 0} in stock`} · $${item.price}${item.code ? ` · ${item.code}` : ""}`;
+      meta.textContent = `${item.service ? "Service" : `${item.quantity || 0} in stock`} · ${formatMoney(item.price, item.at_shop)}${item.code ? ` · ${item.code}` : ""}`;
       details.append(title, meta);
       const add = document.createElement("button");
       add.className = "button button-secondary";
@@ -349,7 +350,7 @@ window.HiperPos = (() => {
         title.textContent = line.product.name || "Product";
         const price = document.createElement("small");
         const choices = [line.product.size && `Size ${line.product.size}`, line.product.color && `Color ${line.product.color}`].filter(Boolean).join(" · ");
-        price.textContent = `$${Number(line.price || 0).toFixed(2)} each${choices ? ` · ${choices}` : ""}`;
+        price.textContent = `${formatMoney(line.price, line.product.at_shop)} each${choices ? ` · ${choices}` : ""}`;
         details.append(title, price);
         const quantity = document.createElement("input");
         quantity.className = "input cart-qty";
@@ -367,7 +368,7 @@ window.HiperPos = (() => {
         });
         const lineTotal = document.createElement("span");
         lineTotal.className = "cart-line-total";
-        lineTotal.textContent = "$" + (line.quantity * line.price).toFixed(2);
+        lineTotal.textContent = formatMoney(line.quantity * line.price, line.product.at_shop);
         const remove = document.createElement("button");
         remove.className = "remove-line";
         remove.type = "button";
@@ -384,12 +385,12 @@ window.HiperPos = (() => {
     const itemCount = state.cart.reduce((sum, line) => sum + line.quantity, 0);
     if ($("#cart-count")) $("#cart-count").textContent = String(itemCount);
     if ($("#cart-total-items")) $("#cart-total-items").textContent = String(itemCount);
-    if ($("#cart-subtotal")) $("#cart-subtotal").textContent = "$" + total.toFixed(2);
-    if ($("#cart-tax")) $("#cart-tax").textContent = "$0.00";
-    if ($("#cart-item-discount")) $("#cart-item-discount").textContent = "$0.00";
-    if ($("#cart-discount")) $("#cart-discount").textContent = "$0.00";
-    if ($("#cart-total")) $("#cart-total").textContent = "$" + total.toFixed(2);
-    if ($("#cart-total-detail")) $("#cart-total-detail").textContent = "$" + total.toFixed(2);
+    if ($("#cart-subtotal")) $("#cart-subtotal").textContent = formatMoney(total);
+    if ($("#cart-tax")) $("#cart-tax").textContent = formatMoney(0);
+    if ($("#cart-item-discount")) $("#cart-item-discount").textContent = formatMoney(0);
+    if ($("#cart-discount")) $("#cart-discount").textContent = formatMoney(0);
+    if ($("#cart-total")) $("#cart-total").textContent = formatMoney(total);
+    if ($("#cart-total-detail")) $("#cart-total-detail").textContent = formatMoney(total);
     if ($("#pos-payment-dialog")?.open) refreshPaymentSummary();
   }
 
@@ -456,6 +457,7 @@ window.HiperPos = (() => {
     let items = [];
     try { items = JSON.parse(sale.item || "[]"); } catch { items = []; }
     const width = 42;
+    const currencyShop = sale.At_Shop_Id || $("#sale-shop")?.value;
     const lines = [
       "HIPER MARKET STORE",
       "-".repeat(width),
@@ -469,15 +471,15 @@ window.HiperPos = (() => {
       const title = String(item.name || "Item");
       const qty = Number(item.quantity) || 1;
       const price = Number(item.price) || 0;
-      lines.push(`${title.slice(0, 25).padEnd(25)} ${String(qty).padStart(5)} $${(price * qty).toFixed(2).padStart(9)}`);
+      lines.push(`${title.slice(0, 25).padEnd(25)} ${String(qty).padStart(5)} ${formatMoney(price * qty, currencyShop).padStart(9)}`);
     }
     const total = Number(sale.price) || 0;
     const received = Number(sale.pid) || 0;
     let payments = [];
     try { payments = JSON.parse(sale.payments || "[]"); } catch { payments = []; }
-    lines.push("-".repeat(width), `Total: $${total.toFixed(2)}`);
-    payments.forEach(payment => lines.push(`${String(payment[0] || "Payment")}: $${(Number(payment[2]) || 0).toFixed(2)}`));
-    lines.push(`Received: $${received.toFixed(2)}`, `Change: $${Math.max(received - total, 0).toFixed(2)}`);
+    lines.push("-".repeat(width), `Total: ${formatMoney(total, currencyShop)}`);
+    payments.forEach(payment => lines.push(`${String(payment[0] || "Payment")}: ${formatMoney(Number(payment[2]) || 0, currencyShop)}`));
+    lines.push(`Received: ${formatMoney(received, currencyShop)}`, `Change: ${formatMoney(Math.max(received - total, 0), currencyShop)}`);
     lines.push("-".repeat(width), "Thank you for shopping with us!");
 
     if ($("#receipt-title")) $("#receipt-title").textContent = sale.doc_barcode || "Sale details";

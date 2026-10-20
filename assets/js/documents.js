@@ -4,7 +4,7 @@
 window.HiperDocuments = (() => {
   "use strict";
 
-  const { state, $, $$, api, showToast } = window.HiperApi;
+  const { state, $, $$, api, showToast, formatMoney } = window.HiperApi;
 
   // Open Document Editors Registry (Map docId/barcode -> { docKey, docItem, items, payments, activeTab })
   const openDocEditors = new Map();
@@ -227,16 +227,16 @@ window.HiperDocuments = (() => {
             <label class="field"><span>User / Seller:</span><input class="input doc-inp-user" value="${docItem.user_id || docItem.Seller_id || 'admin'}" placeholder="User ID"></label>
             <label class="field"><span>At Shop:</span><input class="input doc-inp-shop" value="${docItem.At_Shop_Id || 'Main Shop'}" readonly></label>
             <label class="field"><span>Extension Barcode:</span><input class="input doc-inp-ext" value="${docItem.extension_barcode || ''}"></label>
-            <label class="field"><span>Received / Paid ($):</span><input class="input doc-inp-received" type="number" step="0.01" value="${docItem.pid || docItem.price || 0}"></label>
+            <label class="field"><span>Received / Paid:</span><input class="input doc-inp-received" type="number" step="0.01" value="${docItem.pid || docItem.price || 0}"></label>
             <label class="field"><span>Expire / Due Date:</span><input class="input doc-inp-due" type="date" value="${(docItem.doc_expire_date || '').slice(0, 10)}"></label>
           </div>
           <div class="margin-top-sm" style="display: flex; gap: 16px; font-size: 12px; color: var(--muted); flex-wrap: wrap;">
             <span>Created Date: <strong style="color: #4dd0e1;">${docItem.doc_created_date || '-'}</strong></span>
             <span>Updated Date: <strong style="color: #4dd0e1;">${docItem.doc_updated_date || '-'}</strong></span>
             <span>Total QTY: <strong style="color: #ffffff;">${totalQty}</strong></span>
-            <span>Total Profit: <strong style="color: #16a34a;">$${(totalPrice * 0.35).toFixed(2)}</strong></span>
-            <span>Total Discount: <strong style="color: #e94560;">$${(parseFloat(docItem.discount) || 0).toFixed(2)}</strong></span>
-            <span>Total Tax: <strong style="color: #e94560;">$${(parseFloat(docItem.tax) || 0).toFixed(2)}</strong></span>
+            <span>Total Profit: <strong style="color: #16a34a;">${formatMoney(totalPrice * 0.35, docItem.At_Shop_Id)}</strong></span>
+            <span>Total Discount: <strong style="color: #e94560;">${formatMoney(parseFloat(docItem.discount) || 0, docItem.At_Shop_Id)}</strong></span>
+            <span>Total Tax: <strong style="color: #e94560;">${formatMoney(parseFloat(docItem.tax) || 0, docItem.At_Shop_Id)}</strong></span>
           </div>
         </div>
 
@@ -261,8 +261,8 @@ window.HiperDocuments = (() => {
                   <tr>
                     <td><strong>${it.name || 'Cart Item'}</strong></td>
                     <td><input type="number" min="1" class="input cart-qty-inp" data-idx="${idx}" value="${it.quantity || it.qty || 1}" style="width: 70px;"></td>
-                    <td>$${(Number(it.price) || 0).toFixed(2)}</td>
-                    <td><strong>$${((it.quantity || it.qty || 1) * (it.price || 0)).toFixed(2)}</strong></td>
+                    <td>${formatMoney(Number(it.price) || 0, docItem.At_Shop_Id)}</td>
+                    <td><strong>${formatMoney((it.quantity || it.qty || 1) * (it.price || 0), docItem.At_Shop_Id)}</strong></td>
                     <td><button class="button button-danger button-small btn-remove-item" data-idx="${idx}">✕ Remove</button></td>
                   </tr>
                 `).join('')}
@@ -283,7 +283,7 @@ window.HiperDocuments = (() => {
                 ${payments.map((p, pIdx) => `
                   <tr>
                     <td><span class="count-pill">${p.type || 'Cash'}</span></td>
-                    <td><strong>$${(Number(p.amount) || 0).toFixed(2)}</strong></td>
+                    <td><strong>${formatMoney(Number(p.amount) || 0, docItem.At_Shop_Id)}</strong></td>
                     <td>${p.date || new Date().toLocaleString()}</td>
                     <td>${docItem.user_id || 'admin'}</td>
                     <td><button class="button button-danger button-small btn-remove-payment" data-pidx="${pIdx}">✕</button></td>
@@ -301,7 +301,7 @@ window.HiperDocuments = (() => {
               <option value="Credit">Credit</option>
               <option value="Mobile Payment">Mobile Payment</option>
             </select>
-            <input class="input pay-tool-amount" type="number" step="0.01" placeholder="Amount ($)" style="width: 110px;">
+            <input class="input pay-tool-amount" type="number" step="0.01" placeholder="Amount" style="width: 110px;">
             <input class="input pay-tool-date" type="datetime-local" style="width: 170px;">
             <button class="button button-primary btn-add-payment">➕ Add Payment</button>
           </div>
@@ -532,7 +532,7 @@ window.HiperDocuments = (() => {
       entries.forEach(([lbl, val]) => {
         const item = document.createElement("div");
         item.className = "chart-listbox-item";
-        item.innerHTML = `<span>${lbl}</span><strong>$${val.toFixed(2)}</strong>`;
+        item.innerHTML = `<span>${lbl}</span><strong>${formatMoney(val, state.activeShop)}</strong>`;
         listbox.append(item);
       });
     }
@@ -570,7 +570,7 @@ window.HiperDocuments = (() => {
         tickText.setAttribute("fill", "#8a9ba8");
         tickText.setAttribute("font-size", "10");
         tickText.setAttribute("text-anchor", "end");
-        tickText.textContent = "$" + valTick.toFixed(0);
+        tickText.textContent = formatMoney(valTick, state.activeShop);
 
         svg.append(gridLine, tickText);
       }
@@ -640,7 +640,7 @@ window.HiperDocuments = (() => {
         valText.setAttribute("font-size", "10");
         valText.setAttribute("font-weight", "bold");
         valText.setAttribute("text-anchor", "middle");
-        valText.textContent = "$" + rev.toFixed(0);
+        valText.textContent = formatMoney(rev, state.activeShop);
 
         svg.append(rect, xText, valText);
       });
@@ -676,7 +676,7 @@ window.HiperDocuments = (() => {
         valText.setAttribute("font-size", "10");
         valText.setAttribute("font-weight", "bold");
         valText.setAttribute("text-anchor", "middle");
-        valText.textContent = "$" + rev.toFixed(0);
+        valText.textContent = formatMoney(rev, state.activeShop);
 
         svg.append(circle, xText, valText);
       });
@@ -714,7 +714,7 @@ window.HiperDocuments = (() => {
         lblText.setAttribute("fill", "#eaeaea");
         lblText.setAttribute("font-size", "10");
         lblText.setAttribute("text-anchor", lx > cx ? "start" : "end");
-        lblText.textContent = `${k}: $${rev.toFixed(0)}`;
+        lblText.textContent = `${k}: ${formatMoney(rev, state.activeShop)}`;
 
         svg.append(path, lblText);
         startAngle = endAngle;
@@ -936,7 +936,7 @@ window.HiperDocuments = (() => {
       const label = document.createElement("span");
       const value = document.createElement("strong");
       label.textContent = name;
-      value.textContent = "$" + amount.toFixed(2);
+      value.textContent = formatMoney(amount, state.activeShop);
       line.append(label, value);
       container.append(line);
     });
@@ -976,24 +976,24 @@ window.HiperDocuments = (() => {
     const paidAfterOuts = totalPaid - totalOut;
 
     // Update DOM Metrics (Doc.py)
-    if ($("#rep-cash")) $("#rep-cash").textContent = "$" + cashPaid.toFixed(2);
-    if ($("#rep-card")) $("#rep-card").textContent = "$" + cardPaid.toFixed(2);
-    if ($("#rep-card-in")) $("#rep-card-in").textContent = "$" + cardIn.toFixed(2);
-    if ($("#rep-paid")) $("#rep-paid").textContent = "$" + totalPaid.toFixed(2);
-    if ($("#rep-cash-outs")) $("#rep-cash-outs").textContent = "$" + cashOuts.toFixed(2);
-    if ($("#rep-card-outs")) $("#rep-card-outs").textContent = "$" + cardOuts.toFixed(2);
-    if ($("#rep-expenses")) $("#rep-expenses").textContent = "$" + expenses.toFixed(2);
-    if ($("#rep-total-out")) $("#rep-total-out").textContent = "$" + totalOut.toFixed(2);
-    if ($("#rep-cash-stock")) $("#rep-cash-stock").textContent = "$" + cashStock.toFixed(2);
-    if ($("#rep-card-stock")) $("#rep-card-stock").textContent = "$" + cardStock.toFixed(2);
-    if ($("#rep-credit-stock")) $("#rep-credit-stock").textContent = "$" + creditStock.toFixed(2);
-    if ($("#rep-total-stock")) $("#rep-total-stock").textContent = "$" + totalStock.toFixed(2);
-    if ($("#rep-profit")) $("#rep-profit").textContent = "$" + totalProfit.toFixed(2);
-    if ($("#rep-profit-after-outs")) $("#rep-profit-after-outs").textContent = "$" + profitAfterOuts.toFixed(2);
-    if ($("#rep-paid-after-outs")) $("#rep-paid-after-outs").textContent = "$" + paidAfterOuts.toFixed(2);
-    if ($("#rep-unpaid")) $("#rep-unpaid").textContent = "$" + unpaid.toFixed(2);
-    if ($("#rep-total")) $("#rep-total").textContent = "$" + totalGross.toFixed(2);
-    if ($("#rep-gtotal")) $("#rep-gtotal").textContent = "$" + totalGross.toFixed(2);
+    if ($("#rep-cash")) $("#rep-cash").textContent = formatMoney(cashPaid, state.activeShop);
+    if ($("#rep-card")) $("#rep-card").textContent = formatMoney(cardPaid, state.activeShop);
+    if ($("#rep-card-in")) $("#rep-card-in").textContent = formatMoney(cardIn, state.activeShop);
+    if ($("#rep-paid")) $("#rep-paid").textContent = formatMoney(totalPaid, state.activeShop);
+    if ($("#rep-cash-outs")) $("#rep-cash-outs").textContent = formatMoney(cashOuts, state.activeShop);
+    if ($("#rep-card-outs")) $("#rep-card-outs").textContent = formatMoney(cardOuts, state.activeShop);
+    if ($("#rep-expenses")) $("#rep-expenses").textContent = formatMoney(expenses, state.activeShop);
+    if ($("#rep-total-out")) $("#rep-total-out").textContent = formatMoney(totalOut, state.activeShop);
+    if ($("#rep-cash-stock")) $("#rep-cash-stock").textContent = formatMoney(cashStock, state.activeShop);
+    if ($("#rep-card-stock")) $("#rep-card-stock").textContent = formatMoney(cardStock, state.activeShop);
+    if ($("#rep-credit-stock")) $("#rep-credit-stock").textContent = formatMoney(creditStock, state.activeShop);
+    if ($("#rep-total-stock")) $("#rep-total-stock").textContent = formatMoney(totalStock, state.activeShop);
+    if ($("#rep-profit")) $("#rep-profit").textContent = formatMoney(totalProfit, state.activeShop);
+    if ($("#rep-profit-after-outs")) $("#rep-profit-after-outs").textContent = formatMoney(profitAfterOuts, state.activeShop);
+    if ($("#rep-paid-after-outs")) $("#rep-paid-after-outs").textContent = formatMoney(paidAfterOuts, state.activeShop);
+    if ($("#rep-unpaid")) $("#rep-unpaid").textContent = formatMoney(unpaid, state.activeShop);
+    if ($("#rep-total")) $("#rep-total").textContent = formatMoney(totalGross, state.activeShop);
+    if ($("#rep-gtotal")) $("#rep-gtotal").textContent = formatMoney(totalGross, state.activeShop);
   }
 
   async function performDocSearch() {
@@ -1149,9 +1149,9 @@ window.HiperDocuments = (() => {
         <td>${item.type || "Sale"}</td>
         <td>${item.item ? "Cart Items" : "Items"}</td>
         <td>${item.qty || 1}</td>
-        <td>$${(Number(item.price) || 0).toFixed(2)}</td>
-        <td>$${(Number(item.discount) || 0).toFixed(2)}</td>
-        <td>$${(Number(item.tax) || 0).toFixed(2)}</td>
+        <td>${formatMoney(Number(item.price) || 0, item.At_Shop_Id)}</td>
+        <td>${formatMoney(Number(item.discount) || 0, item.At_Shop_Id)}</td>
+        <td>${formatMoney(Number(item.tax) || 0, item.At_Shop_Id)}</td>
         <td>${item.payments || "Cash"}</td>
         <td>${item.doc_created_date || "-"}</td>
         <td>${item.doc_expire_date || "-"}</td>
@@ -1177,7 +1177,7 @@ window.HiperDocuments = (() => {
 
     const summaryHeader = $("#doc-summary-header");
     if (summaryHeader) {
-      summaryHeader.textContent = `TOTAL DOC : ${totalDocCount} ITEMS : ${totalItemCount} COUNTED Grand Total : $${totalGrandTotal.toFixed(2)}`;
+      summaryHeader.textContent = `TOTAL DOC : ${totalDocCount} ITEMS : ${totalItemCount} COUNTED Grand Total : ${formatMoney(totalGrandTotal, state.activeShop)}`;
     }
 
     if (!docs.length) {
@@ -1243,31 +1243,38 @@ window.HiperDocuments = (() => {
       // payment-tool balances, not the retail value of product quantities.
       const stockValue = round2(paymentTotals.cashStock + paymentTotals.cardStock + paymentTotals.creditStock);
       const totalAfterStock = round2(totalCashPaid + totalCardPaid - totalOuts - stockValue);
+      const totalGross = activeDocs.reduce((sum, doc) => sum + (parseFloat(doc.price) || 0), 0);
 
       // Format Date Range String
       const dateStr = dateFrom === dateTo ? `DATE: ${dateFrom}` : `FROM DATE: ${dateFrom} TO ${dateTo}`;
       if ($("#endday-date-str")) $("#endday-date-str").textContent = dateStr;
 
+      if ($("#daily-cash-val")) $("#daily-cash-val").textContent = formatMoney(totalCashPaid, state.activeShop);
+      if ($("#daily-card-val")) $("#daily-card-val").textContent = formatMoney(totalCardPaid, state.activeShop);
+      if ($("#daily-out-val")) $("#daily-out-val").textContent = formatMoney(totalOuts, state.activeShop);
+      if ($("#daily-profit-val")) $("#daily-profit-val").textContent = formatMoney(totalProfit, state.activeShop);
+      if ($("#daily-grand-total-val")) $("#daily-grand-total-val").textContent = formatMoney(totalGross, state.activeShop);
+
       // Update End Day Summary Cards (Matching Doc.py)
-      if ($("#endday-exp-val")) $("#endday-exp-val").textContent = "$" + round2(expenses).toFixed(2);
-      if ($("#endday-outs-val")) $("#endday-outs-val").textContent = "$" + round2(cashOuts + cardOuts).toFixed(2);
-      if ($("#endday-subouts-val")) $("#endday-subouts-val").textContent = "-$" + round2(totalOuts).toFixed(2);
+      if ($("#endday-exp-val")) $("#endday-exp-val").textContent = formatMoney(expenses, state.activeShop);
+      if ($("#endday-outs-val")) $("#endday-outs-val").textContent = formatMoney(cashOuts + cardOuts, state.activeShop);
+      if ($("#endday-subouts-val")) $("#endday-subouts-val").textContent = "-" + formatMoney(totalOuts, state.activeShop);
 
-      if ($("#endday-cash-val")) $("#endday-cash-val").textContent = "$" + round2(totalCashPaid).toFixed(2);
-      if ($("#endday-card-val")) $("#endday-card-val").textContent = "$" + round2(totalCardPaid).toFixed(2);
-      if ($("#endday-paid-val")) $("#endday-paid-val").textContent = "$" + round2(totalPaid).toFixed(2);
+      if ($("#endday-cash-val")) $("#endday-cash-val").textContent = formatMoney(totalCashPaid, state.activeShop);
+      if ($("#endday-card-val")) $("#endday-card-val").textContent = formatMoney(totalCardPaid, state.activeShop);
+      if ($("#endday-paid-val")) $("#endday-paid-val").textContent = formatMoney(totalPaid, state.activeShop);
 
-      if ($("#endday-profit-val")) $("#endday-profit-val").textContent = "$" + round2(totalProfit).toFixed(2);
+      if ($("#endday-profit-val")) $("#endday-profit-val").textContent = formatMoney(totalProfit, state.activeShop);
 
       const profitExpEl = $("#endday-profit-after-exp-val");
       if (profitExpEl) {
-        profitExpEl.textContent = "$" + profitAfterExp.toFixed(2);
+        profitExpEl.textContent = formatMoney(profitAfterExp, state.activeShop);
         profitExpEl.style.color = profitAfterExp < 0 ? "#f87171" : "#4ade80";
       }
 
-      if ($("#endday-total-after-exp-val")) $("#endday-total-after-exp-val").textContent = "$" + totalAfterExp.toFixed(2);
-      if ($("#endday-stock-val")) $("#endday-stock-val").textContent = "$" + round2(stockValue).toFixed(2);
-      if ($("#endday-total-after-stock-val")) $("#endday-total-after-stock-val").textContent = "$" + totalAfterStock.toFixed(2);
+      if ($("#endday-total-after-exp-val")) $("#endday-total-after-exp-val").textContent = formatMoney(totalAfterExp, state.activeShop);
+      if ($("#endday-stock-val")) $("#endday-stock-val").textContent = formatMoney(stockValue, state.activeShop);
+      if ($("#endday-total-after-stock-val")) $("#endday-total-after-stock-val").textContent = formatMoney(totalAfterStock, state.activeShop);
 
       // Populate Reconciled Documents Table
       const docsBody = $("#endday-docs-body");
@@ -1281,7 +1288,7 @@ window.HiperDocuments = (() => {
             <td>${escapeHtml(doc.At_Shop_Id || doc.at_shop || "Main Shop")}</td>
             <td>${escapeHtml(doc.customer_id || "Walk-in")}</td>
             <td>${escapeHtml(doc.user_id || "admin")}</td>
-            <td>$${(parseFloat(doc.price) || 0).toFixed(2)}</td>
+            <td>${formatMoney(parseFloat(doc.price) || 0, doc.At_Shop_Id)}</td>
             <td>${escapeHtml((doc.doc_created_date || "").split(" ")[0] || dateFrom)}</td>
           `;
           docsBody.append(row);
@@ -1293,27 +1300,28 @@ window.HiperDocuments = (() => {
       }
 
       // Construct Printable End Day Slip Text (Doc.py format)
+      const currencyForReport = value => formatMoney(value, state.activeShop);
       const endDaySlipText = [
         "========================================",
         "       HIPER MARKET - END DAY SLIP      ",
         "========================================",
         dateStr,
         "----------------------------------------",
-        `Expenses              : $${round2(expenses).toFixed(2)}`,
-        `Cash Outs             : $${round2(cashOuts + cardOuts).toFixed(2)}`,
+        `Expenses              : ${currencyForReport(round2(expenses))}`,
+        `Cash Outs             : ${currencyForReport(round2(cashOuts + cardOuts))}`,
         "                        -----------",
-        `Total Outflows        : -$${round2(totalOuts).toFixed(2)}`,
+        `Total Outflows        : -${currencyForReport(round2(totalOuts))}`,
         "",
-        `Cash Paid             : $${round2(totalCashPaid).toFixed(2)}`,
-        `Card Paid             : $${round2(totalCardPaid).toFixed(2)}`,
+        `Cash Paid             : ${currencyForReport(round2(totalCashPaid))}`,
+        `Card Paid             : ${currencyForReport(round2(totalCardPaid))}`,
         "                        -----------",
-        `Total Paid            : $${round2(totalPaid).toFixed(2)}`,
+        `Total Paid            : ${currencyForReport(round2(totalPaid))}`,
         "",
-        `Gross Profit          : $${round2(totalProfit).toFixed(2)}`,
-        `Profit After Exp      : $${profitAfterExp.toFixed(2)}`,
-        `Total After Exp       : $${totalAfterExp.toFixed(2)}`,
-        `Stock                 : $${stockValue.toFixed(2)}`,
-        `Total After Stock     : $${totalAfterStock.toFixed(2)}`,
+        `Gross Profit          : ${currencyForReport(round2(totalProfit))}`,
+        `Profit After Exp      : ${currencyForReport(profitAfterExp)}`,
+        `Total After Exp       : ${currencyForReport(totalAfterExp)}`,
+        `Stock                 : ${currencyForReport(stockValue)}`,
+        `Total After Stock     : ${currencyForReport(totalAfterStock)}`,
         "========================================",
         `Reconciled Documents : ${activeDocs.length} items`,
         "========================================"
@@ -1349,11 +1357,34 @@ window.HiperDocuments = (() => {
   }
 
   function bindEndDayModalEvents() {
+    const setReportMode = (moreInfo) => {
+      $("#daily-report-cards")?.classList.toggle("hidden", moreInfo);
+      $("#daily-report-details")?.classList.toggle("hidden", !moreInfo);
+      $("#endday-report-tabs")?.classList.toggle("hidden", !moreInfo);
+      $("#daily-report-simple")?.classList.toggle("active", !moreInfo);
+      $("#daily-report-simple")?.classList.toggle("button-primary", !moreInfo);
+      $("#daily-report-simple")?.classList.toggle("button-secondary", moreInfo);
+      $("#daily-report-more")?.classList.toggle("active", moreInfo);
+      $("#daily-report-more")?.classList.toggle("button-primary", moreInfo);
+      $("#daily-report-more")?.classList.toggle("button-secondary", !moreInfo);
+      if (!moreInfo) {
+        $("#endday-view-summary")?.classList.remove("hidden");
+        $("#endday-view-docs")?.classList.add("hidden");
+        $("#endday-tab-summary")?.classList.add("active");
+        $("#endday-tab-docs")?.classList.remove("active");
+      }
+    };
+    setReportMode(false);
+    $("#daily-report-simple")?.addEventListener("click", () => setReportMode(false));
+    $("#daily-report-more")?.addEventListener("click", () => setReportMode(true));
+
     $("#endday-tab-summary")?.addEventListener("click", () => {
       $("#endday-tab-summary")?.classList.add("active");
       $("#endday-tab-docs")?.classList.remove("active");
       $("#endday-view-summary")?.classList.remove("hidden");
       $("#endday-view-docs")?.classList.add("hidden");
+      $("#daily-report-cards")?.classList.add("hidden");
+      $("#daily-report-details")?.classList.remove("hidden");
     });
 
     $("#endday-tab-docs")?.addEventListener("click", () => {
@@ -1361,6 +1392,8 @@ window.HiperDocuments = (() => {
       $("#endday-tab-summary")?.classList.remove("active");
       $("#endday-view-docs")?.classList.remove("hidden");
       $("#endday-view-summary")?.classList.add("hidden");
+      $("#daily-report-cards")?.classList.add("hidden");
+      $("#daily-report-details")?.classList.add("hidden");
     });
 
     $("#close-end-day-btn")?.addEventListener("click", () => {

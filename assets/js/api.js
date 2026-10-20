@@ -8,11 +8,29 @@ window.HiperApi = (() => {
     token: sessionStorage.getItem("hiper-token") || "",
     user: null,
     health: null,
-    cart: []
+    cart: [],
+    shopActions: []
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+  function currencyForShop(shopRef) {
+    if (shopRef && typeof shopRef === "object" && shopRef.Shop_currency) return String(shopRef.Shop_currency).toUpperCase();
+    const key = String(shopRef || "").trim().toLowerCase();
+    const shop = (state.shops || []).find(item => [item.Shop_Id, item.Shop_name, item.Shop_brand_name, item.name].some(value => String(value || "").trim().toLowerCase() === key));
+    return String(shop?.Shop_currency || (key ? "ETB" : state.activeShop?.Shop_currency) || "ETB").toUpperCase();
+  }
+
+  function formatMoney(amount, shopRef) {
+    const currency = currencyForShop(shopRef);
+    const value = Number(amount) || 0;
+    try {
+      return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(value);
+    } catch {
+      return `${currency} ${value.toFixed(2)}`;
+    }
+  }
 
   function getApiEndpoint() {
     const custom = localStorage.getItem("hiper-api-link") || "";
@@ -114,6 +132,8 @@ window.HiperApi = (() => {
     state,
     $,
     $$,
+    currencyForShop,
+    formatMoney,
     api,
     getApiEndpoint,
     showToast,
