@@ -152,17 +152,27 @@ window.HiperAppSettings = (() => {
       return;
     }
     setMessage(message, "Uploading image…");
-    const form = new FormData();
-    form.append("file", file);
-    try {
-      const result = await api("upload", { method: "POST", body: form });
-      setMessage(message, `Uploaded. Save this image path in record: ${result.file.path}`, "success");
-      showToast("Image uploaded successfully.");
-    } catch (error) {
-      setMessage(message, error.message, "error");
-    } finally {
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const result = await api("upload", {
+          method: "POST",
+          body: { base64: reader.result }
+        });
+        setMessage(message, `Uploaded. Save this image path in record: ${result.file.path}`, "success");
+        showToast("Image uploaded successfully.");
+      } catch (error) {
+        setMessage(message, error.message, "error");
+      } finally {
+        event.target.value = "";
+      }
+    };
+    reader.onerror = () => {
+      setMessage(message, "Failed to read image file.", "error");
       event.target.value = "";
-    }
+    };
+    reader.readAsDataURL(file);
   }
 
   function bindAppSettingsEvents() {

@@ -1137,7 +1137,10 @@ window.HiperDocuments = (() => {
     renderSalesChart(docs);
     calculateFinancialMetrics(docs);
 
-    for (const item of docs) {
+    let currentDocLimit = window.currentDocLimit || 30;
+    const docsToRender = docs.slice(0, currentDocLimit);
+
+    for (const item of docsToRender) {
       const row = document.createElement("tr");
 
       row.innerHTML = `
@@ -1163,12 +1166,35 @@ window.HiperDocuments = (() => {
         state.selectedDocInTable = item;
       });
 
-      // DOUBLE CLICK opens document in a NEW TOP TAB next to Documents (Doc.py)
       row.addEventListener("dblclick", () => {
         openDocumentInTopTab(item);
       });
 
       body.append(row);
+    }
+
+    if (docs.length > currentDocLimit) {
+      const loadMoreRow = document.createElement("tr");
+      loadMoreRow.innerHTML = `<td colspan="14" style="text-align:center;padding:12px;"><button type="button" class="button button-primary" id="btn-load-more-docs">Load More Documents (Showing ${docsToRender.length} of ${docs.length})</button></td>`;
+      body.append(loadMoreRow);
+      $("#btn-load-more-docs")?.addEventListener("click", () => {
+        window.currentDocLimit = (window.currentDocLimit || 30) + 30;
+        renderSales();
+      });
+    }
+
+    const tableWrap = body.closest(".table-scroll");
+    if (tableWrap && !tableWrap.dataset.scrollBound) {
+      tableWrap.dataset.scrollBound = "true";
+      tableWrap.addEventListener("scroll", () => {
+        if (tableWrap.scrollTop + tableWrap.clientHeight >= tableWrap.scrollHeight - 100) {
+          const totalDocs = docs.length;
+          if ((window.currentDocLimit || 30) < totalDocs) {
+            window.currentDocLimit = (window.currentDocLimit || 30) + 30;
+            renderSales();
+          }
+        }
+      });
     }
 
     const totalDocCount = docs.length;

@@ -121,10 +121,6 @@ window.HiperApp = (() => {
   };
 
   function openRecordDialog(resource, item = null) {
-    if (!isManager()) {
-      showToast("Manager access required.", true);
-      return;
-    }
     state.editing = { resource, id: item?.id ?? item?.User_id ?? item?.Shop_Id ?? null };
     if ($("#record-title")) $("#record-title").textContent = `${item ? "Edit" : "Add"} ${resource.slice(0, -1)}`;
     const container = $("#record-fields");
@@ -133,7 +129,18 @@ window.HiperApp = (() => {
     if (resource === "products") {
       renderProductRecordDialog(item, container);
       setMessage($("#record-message"), "");
-      $("#record-dialog")?.showModal();
+      const dialog = $("#record-dialog");
+      if (dialog) {
+        if (typeof dialog.showModal === "function") {
+          try { dialog.showModal(); } catch { dialog.setAttribute("open", ""); }
+        } else {
+          dialog.setAttribute("open", "");
+        }
+      }
+      return;
+    }
+    if (!isManager()) {
+      showToast("Manager access required.", true);
       return;
     }
     for (const [key, label, type = "text", required = false, wide = false] of fieldsByResource[resource] || []) {
@@ -176,7 +183,7 @@ window.HiperApp = (() => {
   function renderProductRecordDialog(item, container) {
     const tabs = document.createElement("div"); tabs.className = "product-editor-tabs";
     const panes = document.createElement("div"); panes.className = "product-editor-panes";
-    const definitions = [["main", "Main info"], ["stock", "Stock"], ["docs", "Doc info"]];
+    const definitions = [["main", "📝 Main info"], ["stock", "📦 Stock"], ["docs", "📄 Doc info"]];
     const paneMap = {};
     definitions.forEach(([key, title], index) => {
       const button = document.createElement("button"); button.type = "button"; button.className = `button product-editor-tab${index === 0 ? " active" : ""}`; button.textContent = title;
@@ -184,6 +191,7 @@ window.HiperApp = (() => {
       tabs.append(button); const pane = document.createElement("section"); pane.className = `product-editor-pane${index ? " hidden" : ""}`; paneMap[key] = pane; panes.append(pane);
     });
     container.append(tabs, panes);
+
     const field = (parent, key, label, type = "text", value = "", options = {}) => {
       const wrapper = document.createElement("label"); wrapper.className = `field${options.wide ? " wide" : ""}`;
       const caption = document.createElement("span"); caption.textContent = label; wrapper.append(caption);
@@ -194,25 +202,85 @@ window.HiperApp = (() => {
       else if (type === "select") { options.values.forEach(entry => input.add(new Option(entry.label, entry.value))); input.value = String(value ?? ""); }
       else { input.type = type; input.value = String(value ?? ""); if (type === "number") input.step = "any"; }
       if (options.required) input.required = true;
+      if (options.list) input.setAttribute("list", options.list);
       wrapper.append(input); parent.append(wrapper); return input;
     };
-    const main = paneMap.main; main.classList.add("form-grid");
+
     const shops = state.shops || []; const shopValue = String(item?.at_shop ?? state.activeShop?.Shop_Id ?? shops[0]?.Shop_Id ?? "");
-    field(main, "name", "Name", "text", item?.name || "", { required: true }); field(main, "code", "Product code", "text", item?.code || ""); field(main, "barcode", "Barcode", "text", item?.barcode || "");
-    field(main, "at_shop", "Shop", "select", shopValue, { required: true, values: shops.map(shop => ({ value: shop.Shop_Id ?? shop.Shop_id ?? shop.Shop_name, label: shop.Shop_name || shop.Shop_brand_name || String(shop.Shop_Id) })) });
-    field(main, "cost", "Cost", "number", item?.cost ?? 0); field(main, "tax", "Tax", "number", item?.tax ?? 0); field(main, "price", "Price", "number", item?.price ?? 0, { required: true });
+
+    // 1. MAIN INFO TAB
+    const main = paneMap.main; main.classList.add("form-grid");
+
+    // Add Name Suggestions Datalist
+    let datalist = document.getElementById("product-name-suggestions");
+    if (!datalist) {
+      datalist = document.createElement("datalist");
+      datalist.id = "product-name-suggestions";
+      document.body.append(datalist);
+    }
+    const uniqueNames = [...new Set((state.products || []).map(p => p.name).filter(Boolean))];
+    datalist.replaceChildren(...uniqueNames.map(name => new Option(name, name)));
+
+    field(main, "name", "Name", "text", item?.name || "", { required: true, wide: true, list: "product-name-suggestions" });
+
+    // Cost, Mark (Markup), Price, Tax
+    const initialCost = Number(item?.cost) || 0;
+    const initialPrice = Number(item?.price) || 0;
+    const initialMark = initialPrice && initialCost ? initialPrice - initialCost : 0;
+
+    const costInput = field(main, "cost", "Cost", "number", initialCost);
+    const markInput = field(main, "mark", "Mark (Markup)", "number", initialMark);
+    const priceInput = field(main, "price", "Price", "number", initialPrice, { required: true });
+    field(main, "tax", "Tax", "number", item?.tax ?? 0);
+
+    costInput.addEventListener("input", () => {
+      const cost = Number(costInput.value) || 0;
+      const mark = Number(markInput.value) || 0;
+      priceInput.value = String(cost + mark);
+    });
+    markInput.addEventListener("input", () => {
+      const cost = Number(costInput.value) || 0;
+      const mark = Number(markInput.value) || 0;
+      priceInput.value = String(cost + mark);
+    });
+    priceInput.addEventListener("input", () => {
+      const cost = Number(costInput.value) || 0;
+      const price = Number(priceInput.value) || 0;
+      markInput.value = String(price - cost);
+    });
+
     field(main, "description", "Description", "textarea", item?.description || "", { wide: true, rows: 3 });
-    field(main, "service", "Service", "checkbox", item?.service); field(main, "default_quantity", "Default Quantity", "checkbox", item?.default_quantity); field(main, "active", "Active", "checkbox", item?.active ?? 1); field(main, "include_tax", "Include Tax", "checkbox", item?.include_tax); field(main, "price_change", "Price Change", "checkbox", item?.price_change);
+    field(main, "service", "Service", "checkbox", item?.service);
+    field(main, "default_quantity", "Default Quantity", "checkbox", item?.default_quantity);
+    field(main, "active", "Active", "checkbox", item?.active ?? 1);
+    field(main, "include_tax", "Include Tax", "checkbox", item?.include_tax);
+    field(main, "price_change", "Price Change", "checkbox", item?.price_change);
+
+
+    // 2. STOCK TAB
+    const stock = paneMap.stock; stock.classList.add("form-grid");
+
+    // AT VERY TOP OF STOCK TAB:
+    // 1) Stock Variants Treeview / Table
+    // 2) Full Stock Information (Legacy JSON)
+    const stockIntro = document.createElement("p"); stockIntro.className = "muted wide"; stockIntro.textContent = "Stock variants treeview & legacy JSON structure at top of Stock tab."; stock.append(stockIntro);
+
+    const stockList = document.createElement("div"); stockList.className = "wide table-scroll"; stock.append(stockList);
+    const moreInfo = field(stock, "more_info", "Full Stock Information (Legacy JSON)", "textarea", item?.more_info || "[]", { wide: true, rows: 5 });
+
+    // Product Categories (in Stock Tab)
     const typeShop = shops.find(shop => String(shop.Shop_Id ?? shop.Shop_id ?? shop.Shop_name) === shopValue) || state.activeShop || shops[0];
     let tree = []; try { const decoded = JSON.parse(typeShop?.Shop_Items_type || "[]"); if (Array.isArray(decoded)) tree = decoded; } catch {}
     if (!tree.length) tree = window.HiperProductCategories || [];
-    const typeLabel = document.createElement("div"); typeLabel.className = "field wide product-category-picker"; const typeCaption = document.createElement("span"); typeCaption.textContent = "Product categories"; typeLabel.append(typeCaption);
+
+    const typeLabel = document.createElement("div"); typeLabel.className = "field wide product-category-picker"; const typeCaption = document.createElement("span"); typeCaption.textContent = "Product categories (Hierarchical)"; typeLabel.append(typeCaption);
     const typeInput = document.createElement("input"); typeInput.type = "hidden"; typeInput.name = "type";
     let selectedTypePaths = []; try { selectedTypePaths = JSON.parse(item?.type || "[]"); if (!Array.isArray(selectedTypePaths)) selectedTypePaths = []; selectedTypePaths = selectedTypePaths.filter(Array.isArray); } catch {}
     let categoryPath = [];
     const pathBar = document.createElement("div"); pathBar.className = "product-category-path";
     const categoryButtons = document.createElement("div"); categoryButtons.className = "product-category-options";
     const selectedCategories = document.createElement("div"); selectedCategories.className = "product-category-selected";
+
     const getCategoryList = path => { let list = tree; for (const name of path) { const node = (list || []).find(entry => Array.isArray(entry) && String(entry[0]) === name); list = Array.isArray(node?.[1]) ? node[1] : []; } return list || []; };
     const renderCategoryPicker = () => {
       pathBar.replaceChildren(); const rootButton = document.createElement("button"); rootButton.type = "button"; rootButton.className = "text-button"; rootButton.textContent = "All categories"; rootButton.addEventListener("click", () => { categoryPath = []; renderCategoryPicker(); }); pathBar.append(rootButton);
@@ -228,46 +296,203 @@ window.HiperApp = (() => {
     };
     const syncSelectedCategories = () => { typeInput.value = JSON.stringify(selectedTypePaths); };
     const selectCategoryPath = path => { if (!selectedTypePaths.some(selected => JSON.stringify(selected) === JSON.stringify(path))) selectedTypePaths.push([...path]); syncSelectedCategories(); renderCategoryPicker(); };
-    typeLabel.append(pathBar, categoryButtons, selectedCategories, typeInput); main.append(typeLabel); renderCategoryPicker();
+    typeLabel.append(pathBar, categoryButtons, selectedCategories, typeInput); renderCategoryPicker();
 
-    const stock = paneMap.stock; stock.classList.add("form-grid");
-    const stockIntro = document.createElement("p"); stockIntro.className = "muted wide"; stockIntro.textContent = "Stock variants use the same nested shop → code → color → size → stock values structure as ProductEdtion.py. You can add rows here or edit the full legacy JSON."; stock.append(stockIntro);
+    // Product Image Avatar & Uploader
+    const avatarBox = document.createElement("div"); avatarBox.className = "wide product-avatar-box";
+    avatarBox.style.cssText = "display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel-raised);";
+    const avatarImg = document.createElement("img");
+    avatarImg.style.cssText = "width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--panel);";
+    let rawImg = item?.images || item?.image_url || item?.image || "";
+    if (Array.isArray(rawImg)) rawImg = rawImg[0] || "";
+    avatarImg.src = rawImg || "assets/images/no_Product_Image.jpg";
+    avatarImg.onerror = () => { avatarImg.src = ""; avatarImg.alt = "No Image"; };
+
+    const fileInput = document.createElement("input"); fileInput.type = "file"; fileInput.accept = "image/jpeg,image/png,image/webp,image/gif"; fileInput.style.display = "none";
+    const uploadBtn = document.createElement("button"); uploadBtn.type = "button"; uploadBtn.className = "button button-secondary"; uploadBtn.textContent = "Change Product Image";
+    uploadBtn.addEventListener("click", () => fileInput.click());
+
+    const imagesHidden = document.createElement("input"); imagesHidden.type = "hidden"; imagesHidden.name = "images"; imagesHidden.value = String(rawImg || "");
+
+    fileInput.addEventListener("change", async (event) => {
+      const file = event.target.files?.[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          uploadBtn.disabled = true; uploadBtn.textContent = "Uploading…";
+          const res = await api("upload", { method: "POST", body: { base64: reader.result } });
+          imagesHidden.value = res.file.path; avatarImg.src = res.file.path; showToast("Product image uploaded.");
+        } catch (err) { showToast(err.message, true); }
+        finally { uploadBtn.disabled = false; uploadBtn.textContent = "Change Product Image"; }
+      };
+      reader.readAsDataURL(file);
+    });
+    avatarBox.append(avatarImg, uploadBtn, fileInput, imagesHidden); stock.append(avatarBox);
+
+    // Sizing Form Generator (Trouser Sizes, Clothing Sizes, Shoe Sizes)
+    const sizingBox = document.createElement("div"); sizingBox.className = "wide product-sizing-box";
+    sizingBox.style.cssText = "padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--panel-raised);display:grid;gap:8px;";
+    const sizingHeading = document.createElement("strong"); sizingHeading.textContent = "Multi Sizing Form Generator";
+    const sizingRow = document.createElement("div"); sizingRow.style.cssText = "display:flex;gap:10px;align-items:center;flex-wrap:wrap;";
+    const sizingSelect = document.createElement("select"); sizingSelect.className = "input";
+    sizingSelect.add(new Option("Select Sizing Type", ""));
+    ["Trouser Sizes", "Clothing Sizes", "Shoe Sizes"].forEach(opt => sizingSelect.add(new Option(opt, opt)));
+
+    const sizeArea = document.createElement("textarea"); sizeArea.className = "input"; sizeArea.rows = 2; sizeArea.placeholder = "Generated sizes: e.g. M:5, L:10"; sizeArea.style.width = "100%";
+    const genBtn = document.createElement("button"); genBtn.type = "button"; genBtn.className = "button button-secondary"; genBtn.textContent = "Generate Sizes";
+
+    sizingSelect.addEventListener("change", () => {
+      const val = sizingSelect.value;
+      if (val === "Trouser Sizes") sizeArea.value = Array.from({length: 25}, (_, i) => `${i + 21}:0`).join(", ");
+      else if (val === "Clothing Sizes") sizeArea.value = ["XS:0", "S:0", "M:0", "L:0", "XL:0", "2XL:0", "3XL:0", "4XL:0", "5XL:0"].join(", ");
+      else if (val === "Shoe Sizes") sizeArea.value = Array.from({length: 12}, (_, i) => `${i + 1}:0`).concat(Array.from({length: 15}, (_, i) => `${i + 30}:0`)).join(", ");
+    });
+
+    sizingRow.append(sizingSelect, genBtn); sizingBox.append(sizingHeading, sizingRow, sizeArea); stock.append(sizingBox);
+
+    // Variant Entry Controls (matching ProductFullEditionForm tab3_frame)
     const variant = document.createElement("div"); variant.className = "form-grid wide product-variant-entry";
     const currentShopName = typeShop?.Shop_name || "";
-    const stockShop = field(variant, "variant_shop", "Shop", "select", currentShopName, { values: shops.map(shop => ({ value: shop.Shop_name || "", label: shop.Shop_name || "Shop" })) });
-    const variantCode = field(variant, "variant_code", "Code", "text", item?.code || ""); const variantColor = field(variant, "variant_color", "Color"); const variantSize = field(variant, "variant_size", "Size");
-    const variantBarcode = field(variant, "variant_barcode", "Barcode"); const variantQty = field(variant, "variant_qty", "Quantity", "number", 0); const variantPrice = field(variant, "variant_price", "Single Price", "number", item?.price ?? 0);
-    const variantAdd = document.createElement("button"); variantAdd.type = "button"; variantAdd.className = "button button-primary"; variantAdd.textContent = "Add Stock Variant"; variant.append(variantAdd); stock.append(variant);
-    const moreInfo = field(stock, "more_info", "Full stock information (legacy JSON)", "textarea", item?.more_info || "[]", { wide: true, rows: 7 });
-    const stockList = document.createElement("div"); stockList.className = "wide table-scroll"; stock.append(stockList);
+    const stockShop = field(variant, "variant_shop", "Shop", "select", currentShopName, { required: true, values: shops.map(shop => ({ value: shop.Shop_name || "", label: shop.Shop_name || "Shop" })) });
+    const variantCode = field(variant, "variant_code", "Code", "text", item?.code || "");
+    const variantColor = field(variant, "variant_color", "Color", "text", "Default");
+    const variantSize = field(variant, "variant_size", "Size", "text", "DEF_SIZE");
+    const variantBarcode = field(variant, "variant_barcode", "Barcode", "text", item?.barcode || "");
+    variant.append(typeLabel);
+    const variantQty = field(variant, "variant_qty", "Quantity", "number", 0);
+    const variantPrice = field(variant, "variant_price", "Single Price", "number", item?.price ?? 0);
+
+    const btnRow = document.createElement("div"); btnRow.style.cssText = "grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap;";
+    const variantAdd = document.createElement("button"); variantAdd.type = "button"; variantAdd.className = "button button-primary"; variantAdd.textContent = "Add Variant";
+    const variantChange = document.createElement("button"); variantChange.type = "button"; variantChange.className = "button button-secondary"; variantChange.textContent = "Change Selected";
+    const variantRemove = document.createElement("button"); variantRemove.type = "button"; variantRemove.className = "button button-danger"; variantRemove.textContent = "Remove Selected";
+    const variantClear = document.createElement("button"); variantClear.type = "button"; variantClear.className = "button"; variantClear.textContent = "Clear Selection";
+    btnRow.append(variantAdd, variantChange, variantRemove, variantClear); variant.append(btnRow); stock.append(variant);
+
+    let selectedRowPath = null;
+
+    const getNode = (list, name) => { let node = list.find(entry => Array.isArray(entry) && String(entry[0]) === name); if (!node) { node = [name, []]; list.push(node); } return node[1]; };
+
+    const addOrUpdateVariant = (isUpdate = false) => {
+      let data; try { data = JSON.parse(moreInfo.value || "[]"); if (!Array.isArray(data)) throw new Error(); } catch { setMessage($("#record-message"), "Stock JSON must be valid before editing variants.", "error"); return; }
+      const sName = stockShop.value; const code = variantCode.value.trim() || item?.code || ""; const color = variantColor.value.trim() || "Default"; const size = variantSize.value.trim() || "DEF_SIZE";
+      if (!code || !size) { setMessage($("#record-message"), "Enter a product code and size.", "error"); return; }
+
+      const codes = getNode(data, sName); const colors = getNode(codes, code); const sizes = getNode(colors, color); const values = getNode(sizes, size);
+      const today = new Date().toISOString().slice(0, 10); const stockType = selectedTypePaths;
+      const newEntry = [variantBarcode.value.trim() || code, JSON.stringify(stockType), variantPrice.value || "0", variantQty.value || "0", variantQty.value || "0", "", "", today, ""];
+
+      if (isUpdate && selectedRowPath) {
+        values.length = 0;
+        values.push(newEntry);
+      } else {
+        values.push(newEntry);
+      }
+      moreInfo.value = JSON.stringify(data); drawStock(); setMessage($("#record-message"), "");
+    };
+
+    variantAdd.addEventListener("click", () => addOrUpdateVariant(false));
+    variantChange.addEventListener("click", () => addOrUpdateVariant(true));
+
+    variantRemove.addEventListener("click", () => {
+      if (!selectedRowPath) return showToast("Select a variant row to remove.", true);
+      let data; try { data = JSON.parse(moreInfo.value || "[]"); } catch { return; }
+      const [sName, code, color, size] = selectedRowPath;
+      const codes = data.find(e => e[0] === sName)?.[1];
+      const colors = codes?.find(e => e[0] === code)?.[1];
+      const sizes = colors?.find(e => e[0] === color)?.[1];
+      if (sizes) {
+        const idx = sizes.findIndex(e => e[0] === size);
+        if (idx !== -1) sizes.splice(idx, 1);
+      }
+      moreInfo.value = JSON.stringify(data); selectedRowPath = null; drawStock(); showToast("Variant removed.");
+    });
+
+    variantClear.addEventListener("click", () => {
+      selectedRowPath = null;
+      variantColor.value = "Default"; variantSize.value = "DEF_SIZE"; variantQty.value = "0";
+      drawStock();
+    });
+
+    genBtn.addEventListener("click", () => {
+      const text = sizeArea.value.trim(); if (!text) return;
+      let data; try { data = JSON.parse(moreInfo.value || "[]"); if (!Array.isArray(data)) throw new Error(); } catch { data = []; }
+      const sName = stockShop.value; const code = variantCode.value.trim() || item?.code || "CODE"; const color = variantColor.value.trim() || "Default";
+      const pairs = text.split(",").map(s => s.trim().split(":")).filter(p => p.length === 2 && p[1].trim() !== "0");
+      if (!pairs.length) return showToast("No non-zero quantities specified in sizes.", true);
+
+      const today = new Date().toISOString().slice(0, 10); const stockType = selectedTypePaths;
+      pairs.forEach(([sz, q]) => {
+        const codes = getNode(data, sName); const colors = getNode(codes, code); const sizes = getNode(colors, color); const values = getNode(sizes, sz.trim());
+        values.push([variantBarcode.value.trim() || code, JSON.stringify(stockType), variantPrice.value || "0", q.trim(), q.trim(), "", "", today, ""]);
+      });
+      moreInfo.value = JSON.stringify(data); drawStock(); showToast(`${pairs.length} size variant(s) generated.`);
+    });
+
     const drawStock = () => {
       stockList.replaceChildren(); const table = document.createElement("table"); table.innerHTML = "<thead><tr><th>Shop</th><th>Code</th><th>Color</th><th>Size</th><th>Barcode</th><th>Type</th><th>Price</th><th>Initial Qty</th><th>Current Qty</th></tr></thead>";
       const body = document.createElement("tbody"); let parsed = []; try { parsed = JSON.parse(moreInfo.value || "[]"); } catch {}
-      const rows = []; const recurse = nodes => (nodes || []).forEach(node => { if (!Array.isArray(node)) return; if (node.length === 2 && Array.isArray(node[1])) { if (node[1].length && node[1][0]?.length === 2 && Array.isArray(node[1][0][1])) { recurse(node[1]); } else recurse(node[1]); } });
-      const flatten = (nodes, path = []) => (nodes || []).forEach(node => { if (!Array.isArray(node) || node.length < 2 || !Array.isArray(node[1])) return; const children = node[1]; if (children.length && Array.isArray(children[0]) && children[0].length === 2 && Array.isArray(children[0][1])) flatten(children, [...path, node[0]]); else children.forEach(value => { if (Array.isArray(value)) rows.push([...path, node[0], value]); }); });
+      const rows = [];
+      const flatten = (nodes, path = []) => (nodes || []).forEach(node => {
+        if (!Array.isArray(node) || node.length < 2 || !Array.isArray(node[1])) return;
+        const children = node[1];
+        if (children.length && Array.isArray(children[0]) && children[0].length === 2 && Array.isArray(children[0][1])) flatten(children, [...path, node[0]]);
+        else children.forEach(value => { if (Array.isArray(value)) rows.push([...path, node[0], value]); });
+      });
       flatten(parsed);
-      rows.forEach(rowData => { const value = rowData[rowData.length - 1]; const row = document.createElement("tr"); [...rowData.slice(0, -1), value[0] || "", value[1] || "", value[2] || "", value[3] || "", value[4] || ""].forEach(value => { const cell = document.createElement("td"); cell.textContent = String(value ?? ""); row.append(cell); }); body.append(row); });
+
+      rows.forEach(rowData => {
+        const value = rowData[rowData.length - 1]; const row = document.createElement("tr"); row.style.cursor = "pointer";
+        const pathKey = rowData.slice(0, 4);
+        if (selectedRowPath && JSON.stringify(selectedRowPath) === JSON.stringify(pathKey)) row.className = "manager-selected-row";
+
+        row.addEventListener("click", () => {
+          selectedRowPath = pathKey;
+          stockShop.value = rowData[0] || ""; variantCode.value = rowData[1] || ""; variantColor.value = rowData[2] || ""; variantSize.value = rowData[3] || "";
+          variantBarcode.value = value[0] || ""; variantPrice.value = value[2] || "0"; variantQty.value = value[4] || "0";
+          drawStock();
+        });
+
+        [...rowData.slice(0, -1), value[0] || "", value[1] || "", value[2] || "", value[3] || "", value[4] || ""].forEach(val => { const cell = document.createElement("td"); cell.textContent = String(val ?? ""); row.append(cell); });
+        body.append(row);
+      });
       if (!rows.length) { const row = document.createElement("tr"); row.innerHTML = '<td colspan="9" class="empty-state">No stock variants recorded.</td>'; body.append(row); }
       table.append(body); stockList.append(table);
     };
     drawStock(); moreInfo.addEventListener("input", drawStock);
-    variantAdd.addEventListener("click", () => {
-      let data; try { data = JSON.parse(moreInfo.value || "[]"); if (!Array.isArray(data)) throw new Error(); } catch { setMessage($("#record-message"), "Stock information must be valid JSON before adding a variant.", "error"); return; }
-      const shopName = stockShop.value; const code = variantCode.value.trim() || item?.code || ""; const color = variantColor.value.trim(); const size = variantSize.value.trim();
-      if (!code || !size) { setMessage($("#record-message"), "Enter a product code and size for this stock variant.", "error"); return; }
-      const getNode = (list, name) => { let node = list.find(entry => Array.isArray(entry) && String(entry[0]) === name); if (!node) { node = [name, []]; list.push(node); } return node[1]; };
-      const codes = getNode(data, shopName); const colors = getNode(codes, code); const sizes = getNode(colors, color || "Default"); const values = getNode(sizes, size);
-      const today = new Date().toISOString().slice(0, 10); const stockType = selectedTypePaths;
-      values.push([variantBarcode.value.trim() || code, JSON.stringify(stockType), variantPrice.value || "0", variantQty.value || "0", variantQty.value || "0", "", "", today, ""]);
-      moreInfo.value = JSON.stringify(data); drawStock(); setMessage($("#record-message"), "");
-    });
 
-    const docs = paneMap.docs; const summary = document.createElement("div"); summary.className = "panel"; summary.innerHTML = `<h3>Product document history</h3><p class="muted">Stocked, restocked, sold, and updated documents linked to this product.</p>`; docs.append(summary);
+    // 3. DOC INFO TAB (Matching ProductFullEditionForm doc_details_frame & perform_doc_search)
+    const docs = paneMap.docs;
+    const today = new Date().toISOString().slice(0, 10);
+    const docToolbar = document.createElement("div"); docToolbar.style.cssText = "display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel-raised);";
+    const dateFrom = document.createElement("input"); dateFrom.type = "date"; dateFrom.className = "input"; dateFrom.value = today;
+    const dateTo = document.createElement("input"); dateTo.type = "date"; dateTo.className = "input"; dateTo.value = today;
+    const refreshDocsBtn = document.createElement("button"); refreshDocsBtn.type = "button"; refreshDocsBtn.className = "button button-primary"; refreshDocsBtn.textContent = "Filter Documents";
+    const docCountSummary = document.createElement("strong"); docCountSummary.style.marginLeft = "auto";
+    docToolbar.append(document.createTextNode("From:"), dateFrom, document.createTextNode("To:"), dateTo, refreshDocsBtn, docCountSummary); docs.append(docToolbar);
+
     const docTable = document.createElement("div"); docTable.className = "table-scroll"; docs.append(docTable);
-    const matches = (state.sales || []).filter(doc => { const raw = String(doc.item || ""); return raw.includes(String(item?.id ?? "__new__")) || (item?.code && raw.includes(item.code)); });
-    const history = document.createElement("table"); history.innerHTML = "<thead><tr><th>Date</th><th>Type</th><th>Document</th><th>Quantity</th><th>Amount</th></tr></thead>"; const historyBody = document.createElement("tbody");
-    matches.forEach(doc => { const row = document.createElement("tr"); [doc.doc_created_date, doc.type, doc.doc_barcode, doc.qty, formatMoney(doc.price, item?.at_shop)].forEach(value => { const cell = document.createElement("td"); cell.textContent = String(value ?? ""); row.append(cell); }); historyBody.append(row); });
-    if (!matches.length) { const row = document.createElement("tr"); row.innerHTML = '<td colspan="5" class="empty-state">No linked documents found.</td>'; historyBody.append(row); } history.append(historyBody); docTable.append(history);
+
+    const renderDocHistory = () => {
+      docTable.replaceChildren();
+      const fromVal = dateFrom.value; const toVal = dateTo.value;
+      const matches = (state.sales || []).filter(doc => {
+        const dDate = String(doc.doc_created_date || "").slice(0, 10);
+        const matchDate = (!fromVal || dDate >= fromVal) && (!toVal || dDate <= toVal);
+        const raw = String(doc.item || "");
+        const matchProduct = raw.includes(String(item?.id ?? "__new__")) || (item?.code && raw.includes(item.code)) || (item?.name && raw.includes(item.name));
+        return matchDate && matchProduct;
+      });
+
+      docCountSummary.textContent = `Total Documents: ${matches.length}`;
+      const history = document.createElement("table"); history.innerHTML = "<thead><tr><th>Date</th><th>Type</th><th>Barcode</th><th>Quantity</th><th>Total Amount</th></tr></thead>"; const historyBody = document.createElement("tbody");
+      matches.forEach(doc => { const row = document.createElement("tr"); [doc.doc_created_date, doc.type, doc.doc_barcode, doc.qty, formatMoney(doc.price, item?.at_shop)].forEach(value => { const cell = document.createElement("td"); cell.textContent = String(value ?? ""); row.append(cell); }); historyBody.append(row); });
+      if (!matches.length) { const row = document.createElement("tr"); row.innerHTML = '<td colspan="5" class="empty-state">No linked documents found for this date range.</td>'; historyBody.append(row); }
+      history.append(historyBody); docTable.append(history);
+    };
+
+    refreshDocsBtn.addEventListener("click", renderDocHistory);
+    renderDocHistory();
   }
 
   function productQuantity(value) {
@@ -279,6 +504,13 @@ window.HiperApp = (() => {
     const data = {};
     for (const [key, value] of new FormData(form).entries()) data[key] = value;
     for (const checkbox of form.querySelectorAll('input[type="checkbox"][name]')) data[checkbox.name] = checkbox.checked ? 1 : 0;
+    const variantShopName = String(data.variant_shop || "");
+    const selectedShop = (state.shops || []).find(shop => String(shop.Shop_name || "") === variantShopName);
+    const editingProduct = (state.products || []).find(product => String(product.id) === String(state.editing?.id));
+    data.at_shop = selectedShop?.Shop_Id ?? selectedShop?.Shop_id ?? selectedShop?.Shop_name ?? editingProduct?.at_shop ?? state.activeShop?.Shop_Id ?? "";
+    data.code = String(data.variant_code || editingProduct?.code || "").trim();
+    data.barcode = String(data.variant_barcode || editingProduct?.barcode || "").trim();
+    for (const key of ["variant_shop", "variant_code", "variant_color", "variant_size", "variant_barcode", "variant_qty", "variant_price"]) delete data[key];
     let selectedTypes = []; try { selectedTypes = JSON.parse(form.querySelector('[name="type"]')?.value || "[]"); } catch {} data.type = JSON.stringify(selectedTypes);
     let more; try { more = JSON.parse(data.more_info || "[]"); if (!Array.isArray(more)) throw new Error(); } catch { throw new Error("Stock information must be valid JSON."); }
     data.more_info = JSON.stringify(more); data.quantity = productQuantity(data.more_info);

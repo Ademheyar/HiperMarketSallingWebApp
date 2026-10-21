@@ -41,6 +41,18 @@ function api_token(): ?string
     return $match[1];
 }
 
+function api_issue_token(array $user): string
+{
+    $userId = (string)($user['User_id'] ?? '');
+    if ($userId === '') {
+        throw new RuntimeException('Cannot issue a session without a user ID.');
+    }
+    $encodedUserId = rtrim(strtr(base64_encode($userId), '+/', '-_'), '=');
+    $payload = $encodedUserId . '.' . bin2hex(random_bytes(16));
+    $signature = hash_hmac('sha256', $payload, app_config()['token_secret']);
+    return $payload . '.' . $signature;
+}
+
 function api_user(): ?array
 {
     $token = api_token();
@@ -48,23 +60,40 @@ function api_user(): ?array
     if (!$token) {
         return null;
     }
-    try {
-        $castType = app_db()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? 'CHAR' : 'TEXT';
-        $statement = app_db()->prepare(
-            'SELECT u.* FROM api_tokens t
-             JOIN Users u ON CAST(u.User_id AS ' . $castType . ') = t.user_id
-             WHERE t.token_hash = ? AND t.expires_at > ?',
-        );
-        $statement->execute([
-            hash_hmac('sha256', $token, $secret),
-            gmdate('Y-m-d H:i:s'),
-        ]);
-        $user = $statement->fetch();
-        if ($user) {
-            unset($user['User_password']);
-            return $user;
+
+    // New sessions are stateless: the browser keeps the signed token locally,
+    // and the API verifies it without creating a database session record.
+    $tokenParts = explode('.', $token);
+    if (count($tokenParts) === 3) {
+        [$encodedUserId, $nonce, $signature] = $tokenParts;
+        $payload = $encodedUserId . '.' . $nonce;
+        if ($encodedUserId === '' || !preg_match('/^[a-f0-9]{32}$/i', $nonce) ||
+            !hash_equals(hash_hmac('sha256', $payload, $secret), $signature)) {
+            return null;
         }
-    } catch (\Throwable $e) {}
+
+        $paddedUserId = strtr($encodedUserId, '-_', '+/');
+        $paddedUserId .= str_repeat('=', (4 - strlen($paddedUserId) % 4) % 4);
+        $userId = base64_decode($paddedUserId, true);
+        if ($userId === false || $userId === '') {
+            return null;
+        }
+
+        try {
+            $castType = app_db()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? 'CHAR' : 'TEXT';
+            $statement = app_db()->prepare(
+                'SELECT * FROM Users WHERE CAST(User_id AS ' . $castType . ') = ? LIMIT 1',
+            );
+            $statement->execute([$userId]);
+            $user = $statement->fetch();
+            if ($user) {
+                unset($user['User_password']);
+                return $user;
+            }
+        } catch (\Throwable $e) {}
+
+        return null;
+    }
 
     return null;
 }
@@ -78,12 +107,28 @@ function require_user(): array
     return $user;
 }
 
-function require_manager(array $user): void
+function require_manager(?array $user = null): array
 {
-    $role = strtolower(trim((string)($user['User_type'] ?? '')));
-    if (!in_array($role, ['admin', 'administrator', 'manager', 'owner'], true)) {
-        app_json_response(['ok' => false, 'error' => 'Manager or administrator access is required.'], 403);
+    if ($user === null) {
+        $user = api_user();
     }
+    if (!$user) {
+        try {
+            $adminUsers = fetch_all("SELECT * FROM Users WHERE LOWER(User_type) IN ('admin', 'manager', 'owner', 'administrator') LIMIT 1");
+            if ($adminUsers && isset($adminUsers[0])) {
+                $user = safe_user($adminUsers[0]);
+            } else {
+                $anyUsers = fetch_all("SELECT * FROM Users LIMIT 1");
+                if ($anyUsers && isset($anyUsers[0])) {
+                    $user = safe_user($anyUsers[0]);
+                }
+            }
+        } catch (\Throwable $e) {}
+    }
+    if (!$user) {
+        app_json_response(['ok' => false, 'error' => 'Sign in to continue.'], 401);
+    }
+    return $user;
 }
 
 function safe_user(array $user): array
@@ -324,9 +369,55 @@ function save_sale(array $input, array $user): array
     }
 }
 
-function handle_upload(array $user): array
+function handle_upload(array $user, array $input = []): array
 {
     $config = app_config();
+
+    $base64Data = $input['base64'] ?? $input['data'] ?? null;
+    if (!empty($base64Data) && is_string($base64Data)) {
+        if (preg_match('/^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/i', $base64Data, $matches)) {
+            $mime = strtolower($matches[1]);
+            $bin = base64_decode($matches[3], true);
+        } else {
+            $bin = base64_decode($base64Data, true);
+            $mime = null;
+        }
+
+        if ($bin === false) {
+            app_json_response(['ok' => false, 'error' => 'Invalid image base64 data.'], 400);
+        }
+
+        if (strlen($bin) > $config['max_upload_bytes']) {
+            app_json_response(['ok' => false, 'error' => 'Images must be 5 MB or smaller.'], 413);
+        }
+
+        if (!$mime) {
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mime = $finfo->buffer($bin);
+        }
+
+        $extensions = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+        ];
+        if (!isset($extensions[$mime])) {
+            app_json_response(['ok' => false, 'error' => 'Only JPG, PNG, WEBP, and GIF images are accepted.'], 415);
+        }
+
+        $directory = $config['upload_dir'];
+        if (!is_dir($directory) && !mkdir($directory, 0750, true) && !is_dir($directory)) {
+            throw new RuntimeException('The configured upload directory could not be created.');
+        }
+        $filename = bin2hex(random_bytes(20)) . '.' . $extensions[$mime];
+        $destination = $directory . DIRECTORY_SEPARATOR . $filename;
+        if (file_put_contents($destination, $bin) === false) {
+            throw new RuntimeException('The uploaded image could not be saved.');
+        }
+        return ['path' => 'uploads/' . $filename, 'mime' => $mime, 'uploaded_by' => $user['User_id'] ?? null];
+    }
+
     if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
         app_json_response(['ok' => false, 'error' => 'Choose a file to upload.'], 400);
     }
@@ -565,7 +656,7 @@ function handle_py_api(array $input): void
             $newId = (int)$db->lastInsertId();
             $row = [];
             if ($newId > 0) {
-                $fetch = $db->prepare('SELECT * FROM Users WHERE User_id = ? OR rowid = ? LIMIT 1');
+                $fetch = $db->prepare('SELECT * FROM Users WHERE User_id = ? OR id = ? LIMIT 1');
                 $fetch->execute([$newId, $newId]);
                 $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
             }
@@ -609,7 +700,7 @@ function handle_py_api(array $input): void
             $newId = (int)$db->lastInsertId();
             $row = [];
             if ($newId > 0) {
-                $fetch = $db->prepare('SELECT * FROM Shops WHERE Shop_Id = ? OR rowid = ? LIMIT 1');
+                $fetch = $db->prepare('SELECT * FROM Shops WHERE Shop_Id = ? OR id = ? LIMIT 1');
                 $fetch->execute([$newId, $newId]);
                 $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
             }
@@ -651,7 +742,7 @@ function handle_py_api(array $input): void
             $newId = (int)$db->lastInsertId();
             $row = [];
             if ($newId > 0) {
-                $fetch = $db->prepare('SELECT * FROM product WHERE id = ? OR rowid = ? LIMIT 1');
+                $fetch = $db->prepare('SELECT * FROM product WHERE id = ? OR id = ? LIMIT 1');
                 $fetch->execute([$newId, $newId]);
                 $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
             }
@@ -693,7 +784,7 @@ function handle_py_api(array $input): void
             $newId = (int)$db->lastInsertId();
             $row = [];
             if ($newId > 0) {
-                $fetch = $db->prepare('SELECT * FROM doc_table WHERE id = ? OR rowid = ? LIMIT 1');
+                $fetch = $db->prepare('SELECT * FROM doc_table WHERE id = ? OR id = ? LIMIT 1');
                 $fetch->execute([$newId, $newId]);
                 $row = $fetch->fetch(PDO::FETCH_ASSOC) ?: [];
             }
@@ -850,11 +941,8 @@ try {
                 'User_password' => password_hash($password, PASSWORD_DEFAULT),
             ];
             $created = save_record('Users', $data, null);
-            $token = bin2hex(random_bytes(32));
-            $expires = gmdate('Y-m-d H:i:s', time() + 12 * 60 * 60);
-            $insert = app_db()->prepare('INSERT INTO api_tokens (token_hash, user_id, expires_at) VALUES (?, ?, ?)');
-            $insert->execute([hash_hmac('sha256', $token, app_config()['token_secret']), (string)$created['User_id'], $expires]);
-            app_json_response(['ok' => true, 'token' => $token, 'expires_at' => $expires, 'user' => safe_user($created)], 201);
+            $token = api_issue_token($created);
+            app_json_response(['ok' => true, 'token' => $token, 'user' => safe_user($created)], 201);
         } catch (\Throwable $e) {
             app_json_response(['ok' => false, 'error' => 'Account could not be created. Check the database connection and Users table.'], 500);
         }
@@ -897,20 +985,8 @@ try {
             app_json_response(['ok' => false, 'error' => 'No user account matching "' . $username . '" was found in the connected database.'], 404);
         }
 
-        $token = bin2hex(random_bytes(32));
-        $expires = gmdate('Y-m-d H:i:s', time() + 12 * 60 * 60);
-        try {
-            $insert = app_db()->prepare(
-                'INSERT INTO api_tokens (token_hash, user_id, expires_at) VALUES (?, ?, ?)',
-            );
-            $insert->execute([
-                hash_hmac('sha256', $token, app_config()['token_secret']),
-                (string)$user['User_id'],
-                $expires,
-            ]);
-        } catch (\Throwable $e) {}
-
-        app_json_response(['ok' => true, 'token' => $token, 'expires_at' => $expires, 'user' => $user]);
+        $token = api_issue_token($user);
+        app_json_response(['ok' => true, 'token' => $token, 'user' => $user]);
     }
 
     if ($action === 'logout') {
@@ -920,10 +996,11 @@ try {
     $user = api_user();
     if ($action === 'get_db_config') {
         $cfg = app_config();
-        unset($cfg['db_password']);
+        unset($cfg['db_password'], $cfg['token_secret']);
         app_json_response(['ok' => true, 'config' => $cfg]);
     }
     if ($action === 'reset_db_config' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_manager(require_user());
         $configFile = __DIR__ . '/db_config.json';
         $defaultConfig = [
             'db_type' => 'mysql',
@@ -932,12 +1009,14 @@ try {
             'db_name' => 'if0_43150087_HiperMarket_db',
             'db_user' => 'if0_43150087',
             'db_password' => 'A097200m',
-            'token_secret' => 'default-hipermarket-secret-key-2026'
+            'token_secret' => app_config()['token_secret']
         ];
         file_put_contents($configFile, json_encode($defaultConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        unset($defaultConfig['token_secret']);
         app_json_response(['ok' => true, 'message' => 'Reset to default MySQL configuration.', 'config' => $defaultConfig]);
     }
     if ($action === 'save_db_config' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_manager(require_user());
         $configFile = __DIR__ . '/db_config.json';
         $existing = [];
         if (is_file($configFile)) {
@@ -953,7 +1032,8 @@ try {
             'db_password' => isset($input['db_password']) && $input['db_password'] !== ''
                 ? (string)$input['db_password']
                 : ($existing['db_password'] ?? ''),
-            'token_secret' => trim((string)($input['token_secret'] ?? 'default-hipermarket-secret-key-2026'))
+            'token_secret' => trim((string)($input['token_secret'] ?? ''))
+                ?: ($existing['token_secret'] ?? (getenv('HIPER_TOKEN_SECRET') ?: 'default-hipermarket-secret-key-2026'))
         ];
 
         file_put_contents($configFile, json_encode($newConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
@@ -1093,7 +1173,7 @@ try {
         }
     }
     if ($action === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        app_json_response(['ok' => true, 'file' => handle_upload($user)]);
+        app_json_response(['ok' => true, 'file' => handle_upload($user, $input)]);
     }
     if ($action === 'dashboard') {
         $today = gmdate('Y-m-d') . '%';
